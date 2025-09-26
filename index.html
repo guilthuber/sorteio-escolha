@@ -51,11 +51,11 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
         
-        #setupPanel, #newDrawPanel {
+        #newDrawPanel {
             text-align: center;
         }
 
-        #lobbyUrlInput, #newDrawNameInput, #newDrawUrlInput {
+        #newDrawNameInput {
              background-color: var(--secondary-color);
             color: var(--text-color);
             border: 1px solid var(--accent-color);
@@ -164,6 +164,17 @@
         button.danger:hover {
             background-color: #a72834;
         }
+        
+        button.confirm-btn {
+            padding: 5px 10px;
+            margin-left: 5px;
+            font-size: 0.8em;
+            background-color: var(--success-color);
+        }
+        button.confirm-btn:hover {
+            background-color: #218838;
+        }
+
 
         .checkbox-group, .switch-group {
             display: flex;
@@ -225,6 +236,7 @@
             padding: 12px;
             text-align: center;
             border: 1px solid var(--secondary-color);
+            vertical-align: middle;
         }
 
         thead th {
@@ -252,6 +264,13 @@
             text-align: center;
         }
         
+        .manual-input-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
         .manual-input {
             width: 60px;
             padding: 5px;
@@ -279,6 +298,12 @@
             font-size: 0.8em;
             color: #ccc;
             white-space: nowrap;
+        }
+        
+        .play-order-indicator {
+            font-size: 0.75em;
+            color: #aaa;
+            display: block;
         }
 
         .footer {
@@ -322,17 +347,8 @@
     <div class="container">
         <h1>Sorteio de Rodadas</h1>
 
-        <!-- PAINEL DE CONFIGURAÇÃO INICIAL -->
-        <div id="setupPanel" class="panel">
-            <h2>Configuração do Lobby</h2>
-            <p>Para começar, crie um 'bin' no npoint.io com o conteúdo <code>{ "draws": {} }</code> e cole a URL da API abaixo.</p>
-            <input type="text" id="lobbyUrlInput" placeholder="https://api.npoint.io/xxxxxxxx">
-            <button id="saveLobbyUrlBtn">Salvar URL do Lobby</button>
-            <p id="setupError" style="color: var(--error-color);"></p>
-        </div>
-
         <!-- PAINEL DO LOBBY -->
-        <div id="lobbyPanel" class="panel" style="display: none;">
+        <div id="lobbyPanel" class="panel">
             <label for="drawSelector">Sorteios Salvos:</label>
             <select id="drawSelector"></select>
             <button id="loadDrawBtn">Carregar Sorteio</button>
@@ -346,11 +362,6 @@
                 <label for="newDrawNameInput">Nome do Sorteio:</label>
                 <input type="text" id="newDrawNameInput" placeholder="Ex: Sorteio de Férias">
             </div>
-            <div class="form-group">
-                <label for="newDrawUrlInput">URL da API do npoint.io:</label>
-                <input type="text" id="newDrawUrlInput" placeholder="https://api.npoint.io/xxxxxxxx">
-                <small>Crie um bin vazio no npoint.io com o conteúdo <code>{ "csv": "" }</code> e cole a URL da API aqui.</small>
-            </div>
             <div class="button-group">
                 <button id="saveNewDrawBtn">Salvar Novo Sorteio</button>
                 <button id="cancelNewDrawBtn" class="secondary">Cancelar</button>
@@ -358,200 +369,270 @@
             <p id="newDrawError" style="color: var(--error-color);"></p>
         </div>
 
-        <!-- PAINEL DE CONFIGURAÇÃO DO SORTEIO -->
-        <div id="configPanel" class="panel" style="display: none;">
-            <div class="config-grid">
-                <div class="form-group">
-                    <label for="numPlayers">Nº de participantes</label>
-                    <input type="number" id="numPlayers" value="3" min="3">
-                    <label for="playerNames" style="margin-top: 15px;">Nomes (um por linha ou separados por vírgula)</label>
-                    <textarea id="playerNames" placeholder="Ex: Ana, Beto, Carol"></textarea>
-                </div>
-                <div class="form-group">
-                    <div class="checkbox-group" title="Quando marcado, a cada rodada é sorteado se vence o MAIOR ou o MENOR número.">
-                        <input type="checkbox" id="randomizeWinCriteria">
-                        <label for="randomizeWinCriteria">Randomizar critério de vitória</label>
+        <!-- CONTEÚDO DO SORTEIO CARREGADO -->
+        <div id="drawContent" style="display: none; width: 100%;">
+            <!-- PAINEL DE CONFIGURAÇÃO DO SORTEIO -->
+            <div id="configPanel" class="panel">
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label for="numPlayers">Nº de participantes</label>
+                        <input type="number" id="numPlayers" value="3" min="3">
+                        <label for="playerNames" style="margin-top: 15px;">Nomes (um por linha ou separados por vírgula)</label>
+                        <textarea id="playerNames" placeholder="Ex: Ana, Beto, Carol"></textarea>
                     </div>
-                    <div class="switch-group">
-                        <label class="switch">
-                            <input type="checkbox" id="manualModeToggle">
-                            <span class="slider"></span>
-                        </label>
-                        <label for="manualModeToggle">Entrada manual por turno</label>
+                    <div class="form-group">
+                        <div class="checkbox-group" title="Quando marcado, a cada rodada é sorteado se vence o MAIOR ou o MENOR número.">
+                            <input type="checkbox" id="randomizeWinCriteria">
+                            <label for="randomizeWinCriteria">Randomizar critério de vitória</label>
+                        </div>
+                        <div class="switch-group">
+                            <label class="switch">
+                                <input type="checkbox" id="manualModeToggle">
+                                <span class="slider"></span>
+                            </label>
+                            <label for="manualModeToggle">Entrada manual por turno</label>
+                        </div>
+                        <div id="syncStatus" aria-live="polite">Carregando...</div>
+                        <div id="lastUpdate" style="font-size: 0.8em; color: #aaa;"></div>
                     </div>
-                    <div id="syncStatus" aria-live="polite">Carregando...</div>
-                    <div id="lastUpdate" style="font-size: 0.8em; color: #aaa;"></div>
-                </div>
-                <div class="form-group">
-                    <label>Ações</label>
-                    <div class="button-group">
-                        <button id="createTableBtn">Criar tabela</button>
-                        <button id="randomizeOrderBtn">Randomizar ordem</button>
-                        <button id="generateRoundBtn" disabled>Gerar rodada 1</button>
-                        <button id="generateAllBtn" disabled>Gerar todas restantes</button>
-                        <button id="resetBtn" class="danger" disabled>Resetar sorteio</button>
+                    <div class="form-group">
+                        <label>Ações</label>
+                        <div class="button-group">
+                            <button id="createTableBtn">Criar tabela</button>
+                            <button id="randomizeOrderBtn">Randomizar ordem</button>
+                            <button id="generateRoundBtn" disabled>Gerar rodada 1</button>
+                            <button id="generateAllBtn" disabled>Gerar todas restantes</button>
+                            <button id="resetBtn" class="danger" disabled>Resetar sorteio</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- TABELA PRINCIPAL -->
-        <div class="panel table-container" style="display: none;" id="tablePanel">
-            <table id="resultsTable">
-                <thead></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        
-        <!-- RODAPÉ -->
-        <div class="footer panel" style="display: none;" id="footerPanel">
-            <button id="exportCsvBtn">Exportar CSV</button>
-            <div class="file-input-wrapper">
-                <span class="btn-file">Importar CSV</span>
-                <input type="file" id="importCsvInput" accept=".csv,text/csv">
+            <!-- TABELA PRINCIPAL -->
+            <div class="panel table-container" id="tablePanel">
+                <table id="resultsTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <!-- RODAPÉ -->
+            <div class="footer panel" id="footerPanel">
+                <button id="exportCsvBtn">Exportar CSV</button>
+                <div class="file-input-wrapper">
+                    <span class="btn-file">Importar CSV</span>
+                    <input type="file" id="importCsvInput" accept=".csv,text/csv">
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-    let LOBBY_ENDPOINT = localStorage.getItem('npointLobbyUrl_sorteio') || '';
+    const LOBBY_ENDPOINT = 'https://api.npoint.io/3b4acdc21fbf5889f820';
+    const NPOINT_PROXY_URL = 'https://npoint-proxy.githuberzinho.workers.dev/npoint-documents';
+    
     let currentDrawEndpoint = '';
-    let lobbyData = { draws: {} };
+    let lobbyData = { draws: [] }; 
 
     document.addEventListener('DOMContentLoaded', () => {
         // --- ELEMENTOS DO DOM ---
-        const setupPanel = document.getElementById('setupPanel');
-        const lobbyUrlInput = document.getElementById('lobbyUrlInput');
-        const saveLobbyUrlBtn = document.getElementById('saveLobbyUrlBtn');
-        const setupError = document.getElementById('setupError');
-        
         const lobbyPanel = document.getElementById('lobbyPanel');
         const newDrawPanel = document.getElementById('newDrawPanel');
-        const configPanel = document.getElementById('configPanel');
-        const tablePanel = document.getElementById('tablePanel');
-        const footerPanel = document.getElementById('footerPanel');
-
+        const drawContent = document.getElementById('drawContent');
         const drawSelector = document.getElementById('drawSelector');
         const loadDrawBtn = document.getElementById('loadDrawBtn');
         const createDrawBtn = document.getElementById('createDrawBtn');
-
         const newDrawNameInput = document.getElementById('newDrawNameInput');
-        const newDrawUrlInput = document.getElementById('newDrawUrlInput');
         const saveNewDrawBtn = document.getElementById('saveNewDrawBtn');
         const cancelNewDrawBtn = document.getElementById('cancelNewDrawBtn');
         const newDrawError = document.getElementById('newDrawError');
-        
         const numPlayersInput = document.getElementById('numPlayers');
         const playerNamesTextarea = document.getElementById('playerNames');
         const randomizeWinCriteriaCheckbox = document.getElementById('randomizeWinCriteria');
         const manualModeToggle = document.getElementById('manualModeToggle');
-
         const createTableBtn = document.getElementById('createTableBtn');
         const randomizeOrderBtn = document.getElementById('randomizeOrderBtn');
         const generateRoundBtn = document.getElementById('generateRoundBtn');
         const generateAllBtn = document.getElementById('generateAllBtn');
         const resetBtn = document.getElementById('resetBtn');
-        
         const syncStatusEl = document.getElementById('syncStatus');
         const lastUpdateEl = document.getElementById('lastUpdate');
         const tableThead = document.querySelector('#resultsTable thead');
         const tableTbody = document.querySelector('#resultsTable tbody');
-        
         const exportCsvBtn = document.getElementById('exportCsvBtn');
         const importCsvInput = document.getElementById('importCsvInput');
 
-        // --- ESTADO DA APLICAÇÃO ---
         let state = null; 
         let tableCreated = false;
         let isSaving = false;
         let pollIntervalId = null;
 
         // --- FUNÇÕES UTILITÁRIAS ---
-        function getRandomInt(min, max) { /* ... */ }
-        function shuffleArray(array) { /* ... */ }
-        function updateSyncStatus(status, message) { /* ... */ }
-        // ... (as funções utilitárias completas estão abaixo para economizar espaço)
+        const getRandomInt = (min, max) => {
+            const range = max - min + 1;
+            const buffer = new Uint32Array(1);
+            window.crypto.getRandomValues(buffer);
+            return min + (buffer[0] % range);
+        };
+        const shuffleArray = (array) => {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = getRandomInt(0, i);
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+        const updateSyncStatus = (status, message) => {
+            syncStatusEl.dataset.status = status;
+            syncStatusEl.textContent = message;
+        };
 
-        function showMainPanels(show) {
-            configPanel.style.display = show ? 'block' : 'none';
-            tablePanel.style.display = show ? 'block' : 'none';
-            footerPanel.style.display = show ? 'flex' : 'none';
-        }
-        
         // --- LÓGICA DO LOBBY ---
-
         async function loadLobby() {
             try {
                 const response = await fetch(LOBBY_ENDPOINT);
                 if (!response.ok) throw new Error("Não foi possível carregar o lobby.");
                 const data = await response.json();
-                lobbyData = data && data.draws ? data : { draws: {} }; 
+                lobbyData = data && Array.isArray(data.draws) ? data : { draws: [] }; 
                 populateDrawSelector();
             } catch (error) {
                 console.error("Erro no Lobby:", error);
-                lobbyPanel.innerHTML = "<strong>Erro ao carregar o Lobby. Verifique a URL e a conexão.</strong>";
+                lobbyPanel.innerHTML = `<strong>Erro ao carregar o Lobby. Verifique a URL e a conexão. (${LOBBY_ENDPOINT})</strong>`;
             }
         }
 
         function populateDrawSelector() {
             drawSelector.innerHTML = '<option value="">-- Selecione um Sorteio --</option>';
-            for (const id in lobbyData.draws) {
+            lobbyData.draws.forEach(draw => {
                 const option = document.createElement('option');
-                option.value = id;
-                option.textContent = lobbyData.draws[id];
+                option.value = draw.id;
+                const date = new Date(draw.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+                option.textContent = `${draw.name} (${date})`;
                 drawSelector.appendChild(option);
-            }
+            });
         }
 
-        async function addNewDrawToLobby(id, name) {
-            lobbyData.draws[id] = name;
+        async function saveLobby() {
             try {
                 const response = await fetch(LOBBY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(lobbyData)
                 });
-                if (!response.ok) throw new Error("Falha ao salvar o novo sorteio no lobby.");
-                
+                if (!response.ok) throw new Error("Falha ao salvar o lobby.");
+                return true;
+            } catch (error) {
+                console.error("Erro ao salvar lobby:", error);
+                return false;
+            }
+        }
+
+        async function createNewBinViaProxy() {
+            const initialContents = JSON.stringify({ "csv": "" });
+            const payload = { contents: initialContents };
+            try {
+                const res = await fetch(NPOINT_PROXY_URL, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error(`Proxy returned status ${res.status}`);
+                const data = await res.json();
+                return (data && data.token) ? data.token : null;
+            } catch (e) {
+                console.error('Error creating new bin via proxy:', e);
+                return null;
+            }
+        }
+        
+        async function addNewDrawToLobby(id, name) {
+            const newDraw = { name, id, createdAt: new Date().toISOString() };
+            lobbyData.draws.push(newDraw);
+            const success = await saveLobby();
+            if (success) {
                 newDrawPanel.style.display = 'none';
                 lobbyPanel.style.display = 'flex';
-                
                 populateDrawSelector();
                 drawSelector.value = id;
                 await loadSelectedDraw();
-            } catch (error) {
-                console.error("Erro ao adicionar sorteio:", error);
-                newDrawError.textContent = "Não foi possível salvar o novo sorteio no lobby.";
+            } else {
+                 newDrawError.textContent = "Não foi possível salvar o novo sorteio no lobby.";
+                 lobbyData.draws.pop();
             }
         }
 
         async function loadSelectedDraw() {
             if (pollIntervalId) clearInterval(pollIntervalId);
             pollIntervalId = null;
-
             const selectedId = drawSelector.value;
             if (!selectedId) {
                 state = null;
-                showMainPanels(false);
+                drawContent.style.display = 'none';
                 return;
             }
             currentDrawEndpoint = `https://api.npoint.io/${selectedId}`;
             await fetchRemoteState();
-            showMainPanels(true);
-
+            drawContent.style.display = 'block';
             pollIntervalId = setInterval(pollForChanges, 7000);
         }
 
         // --- LÓGICA DE PERSISTÊNCIA (CSV) ---
-        
-        function serializeToCsv() { /* ... */ }
-        function parseFromCsv(csvString) { /* ... */ }
-        // ... (código completo abaixo)
+        function serializeToCsv() {
+            if (!state) return "";
+            const configLine = `CONFIG,rounds,${state.config.rounds},players,${state.config.players},randomize_win_criteria,${state.config.randomize_win_criteria},updatedAt,${state.config.updatedAt}`;
+            const columnsLine = `COLUMNS,${state.columns.join(',')}`;
+            const namesLine = `NAMES,${state.names.join(',')}`;
+            const roundsLines = state.roundsData.map((round) => {
+                const roundNum = `R${state.roundsData.indexOf(round) + 1}`;
+                const criteria = round.criteria || '';
+                const scores = round.scores.join(',');
+                const order = round.order && round.order.length > 0 ? `ORDER,${round.order.join(',')}` : 'ORDER,';
+                const inputOrder = round.inputOrder ? `INPUT_ORDER,${round.inputOrder.join(',')}` : 'INPUT_ORDER,';
+                const tempScores = round.tempScoresForOrder ? `TEMP_SCORES,${round.tempScoresForOrder.join(',')}` : 'TEMP_SCORES,';
+                return [roundNum, criteria, scores, order, inputOrder, tempScores].join(',');
+            }).join('\n');
+            return [configLine, columnsLine, namesLine, roundsLines].join('\n');
+        }
+
+        function parseFromCsv(csvString) {
+            if (!csvString) return null;
+            const lines = csvString.trim().split('\n');
+            const newState = { config: {}, columns: [], names: [], roundsData: [] };
+            lines.forEach(line => {
+                const parts = line.split(',');
+                const type = parts[0];
+                if (type === 'CONFIG') {
+                    newState.config = { rounds: parseInt(parts[2], 10), players: parseInt(parts[4], 10), randomize_win_criteria: parts[6], updatedAt: parts[8] };
+                } else if (type === 'COLUMNS') {
+                    newState.columns = parts.slice(1);
+                } else if (type === 'NAMES') {
+                    newState.names = parts.slice(1);
+                } else if (type.startsWith('R')) {
+                    const roundIndex = parseInt(type.substring(1), 10) - 1;
+                    if (!newState.roundsData[roundIndex]) newState.roundsData[roundIndex] = { scores: [], order: [], inputOrder: null, tempScoresForOrder: null };
+                    const orderIndex = parts.indexOf('ORDER');
+                    const inputOrderIndex = parts.indexOf('INPUT_ORDER');
+                    const tempScoresIndex = parts.indexOf('TEMP_SCORES');
+                    newState.roundsData[roundIndex].criteria = parts[1];
+                    newState.roundsData[roundIndex].scores = parts.slice(2, orderIndex).map(s => s ? parseInt(s, 10) : null);
+                    if (orderIndex > -1) newState.roundsData[roundIndex].order = parts.slice(orderIndex + 1, inputOrderIndex).map(o => o ? parseInt(o, 10) : null);
+                    if (inputOrderIndex > -1) newState.roundsData[roundIndex].inputOrder = parts.slice(inputOrderIndex + 1, tempScoresIndex).filter(o => o).map(o => parseInt(o, 10));
+                    if (tempScoresIndex > -1) newState.roundsData[roundIndex].tempScoresForOrder = parts.slice(tempScoresIndex + 1).filter(s => s).map(s => parseInt(s, 10));
+                }
+            });
+            if (isNaN(newState.config.rounds)) return null;
+            newState.roundsData.length = newState.config.rounds;
+            for(let i = 0; i < newState.config.rounds; i++) {
+                if(!newState.roundsData[i]) {
+                    newState.roundsData[i] = { scores: Array(newState.config.players).fill(null), order: [], inputOrder: null, tempScoresForOrder: null };
+                }
+            }
+            return newState;
+        }
 
         // --- LÓGICA DE REDE ---
-
         async function fetchRemoteState() {
-             if (!currentDrawEndpoint) return;
+            if (!currentDrawEndpoint) return;
             try {
                 updateSyncStatus('updating', 'Carregando dados...');
                 const response = await fetch(currentDrawEndpoint);
@@ -590,7 +671,6 @@
                 updateSyncStatus('error', 'Falha ao salvar.');
             } finally {
                 isSaving = false;
-                renderUI();
             }
         }
 
@@ -614,398 +694,316 @@
         }
 
         // --- LÓGICA DO SORTEIO ---
-        function determineWinners(scores, criteria) { /* ... */ }
-        function generateRound(roundIndex) { /* ... */ }
+        function determineWinners(scores, criteria) {
+            let indexedScores = scores.map((score, index) => ({ score, index }))
+                                      .filter(item => item.score !== null && !isNaN(item.score));
+            indexedScores.sort((a, b) => {
+                let diff = (criteria === 'MAX') ? b.score - a.score : a.score - b.score;
+                return diff !== 0 ? diff : (getRandomInt(1, 100) > 50 ? 1 : -1);
+            });
+            const places = Array(scores.length).fill(null);
+            indexedScores.slice(0, 3).forEach((item, i) => { places[item.index] = i + 1; });
+            return { order: places, orderedIndices: indexedScores.map(item => item.index) };
+        }
+        
+        function generateRound(roundIndex) {
+            const roundData = state.roundsData[roundIndex];
+            if (!roundData.criteria) roundData.criteria = (state.config.randomize_win_criteria === 'Y') ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
+            roundData.scores = Array.from({ length: state.config.players }, () => getRandomInt(1, 100));
+            const { order } = determineWinners(roundData.scores, roundData.criteria);
+            roundData.order = order;
+        }
+
+        function startManualRound(roundIndex) {
+            const roundData = state.roundsData[roundIndex];
+            const tempScores = Array.from({ length: state.config.players }, () => getRandomInt(1, 100));
+            if (!roundData.criteria) roundData.criteria = (state.config.randomize_win_criteria === 'Y') ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
+            const { orderedIndices } = determineWinners(tempScores, roundData.criteria);
+            roundData.tempScoresForOrder = tempScores;
+            roundData.inputOrder = orderedIndices;
+            roundData.scores.fill(null);
+            roundData.order = [];
+            saveRemoteState().then(renderUI);
+        }
 
         // --- RENDERIZAÇÃO DA UI ---
-        function renderUI() { /* ... */ }
-        function handleManualInputChange(e) { /* ... */ }
-        function findNextRound() { /* ... */ }
-        function updateButtonStates() { /* ... */ }
+        function renderUI() {
+            if (!state) return;
+
+            if (!tableCreated) {
+                numPlayersInput.value = state.config.players;
+                randomizeWinCriteriaCheckbox.checked = state.config.randomize_win_criteria === 'Y';
+                playerNamesTextarea.value = state.names.join('\n');
+            }
+            
+            if (state.config.updatedAt) lastUpdateEl.textContent = `Última atualização: ${new Date(state.config.updatedAt).toLocaleString()}`;
+            tableThead.innerHTML = '';
+            tableTbody.innerHTML = '';
+            
+            if (!tableCreated) {
+                updateButtonStates();
+                return;
+            }
+            const headerRow1 = document.createElement('tr');
+            const headerRow2 = document.createElement('tr');
+            headerRow1.innerHTML = '<th></th>';
+            headerRow2.innerHTML = '<th>SORTEIO</th>';
+            state.columns.forEach((colId, index) => {
+                const th1 = document.createElement('th');
+                th1.textContent = state.names[index] || `Nome ${index + 1}`;
+                headerRow1.appendChild(th1);
+                const th2 = document.createElement('th');
+                th2.textContent = `PESSOA ${index + 1}`;
+                headerRow2.appendChild(th2);
+            });
+            headerRow1.innerHTML += '<th></th>';
+            headerRow2.innerHTML += '<th>CRITÉRIO</th>';
+            tableThead.appendChild(headerRow1);
+            tableThead.appendChild(headerRow2);
+            state.roundsData.forEach((round, roundIndex) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td><strong>R${roundIndex + 1}</strong></td>`;
+                const isManualModeActive = manualModeToggle.checked;
+                let nextPlayerToInput = -1;
+                if (isManualModeActive && round.inputOrder && round.inputOrder.length > 0) {
+                    const nextIndex = round.inputOrder.find(idx => round.scores[idx] === null || round.scores[idx] === '');
+                    if (typeof nextIndex !== 'undefined') nextPlayerToInput = nextIndex;
+                }
+                (round.scores || []).forEach((score, playerIndex) => {
+                    const td = document.createElement('td');
+                    if (isManualModeActive && round.inputOrder && round.inputOrder.length > 0) {
+                        const playOrder = round.inputOrder.indexOf(playerIndex) + 1;
+                        if (score === null || score === '') {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'manual-input-wrapper';
+                            
+                            const input = document.createElement('input');
+                            input.type = "text";
+                            input.inputMode = "numeric";
+                            input.pattern = "[0-9]*";
+                            input.className = 'manual-input';
+                            input.dataset.round = roundIndex;
+                            input.dataset.player = playerIndex;
+                            input.disabled = playerIndex !== nextPlayerToInput;
+                            if (!input.disabled) setTimeout(() => input.focus(), 0);
+                            wrapper.appendChild(input);
+
+                            if (playerIndex === nextPlayerToInput) {
+                                const confirmBtn = document.createElement('button');
+                                confirmBtn.textContent = '✔';
+                                confirmBtn.className = 'confirm-btn';
+                                confirmBtn.onclick = () => handleManualInputChange({ target: input });
+                                wrapper.appendChild(confirmBtn);
+                            }
+                            td.appendChild(wrapper);
+
+                            const tempScore = round.tempScoresForOrder ? round.tempScoresForOrder[playerIndex] : '-';
+                            if(playOrder > 0) td.innerHTML += `<span class="play-order-indicator">(${playOrder}º a jogar - Sorteado: ${tempScore})</span>`;
+                        } else {
+                            td.innerHTML = `${score} ${round.order[playerIndex] ? `<span class="winner-${round.order[playerIndex]}">[${round.order[playerIndex]}º]</span>` : ''}`;
+                        }
+                    } else {
+                        let content = '';
+                        if (score !== null && score !== '') {
+                            content = `${score} `;
+                            const place = round.order[playerIndex];
+                            if (place) content += `<span class="winner-${place}">[${place}º]</span>`;
+                        }
+                        td.innerHTML = content;
+                    }
+                    tr.appendChild(td);
+                });
+                const criteriaTd = document.createElement('td');
+                if(round.criteria) criteriaTd.innerHTML = `<span class="win-criteria">${round.criteria === 'MAX' ? 'MAIOR' : 'MENOR'} vence</span>`;
+                tr.appendChild(criteriaTd);
+                tableTbody.appendChild(tr);
+            });
+            updateButtonStates();
+        }
+        
+        async function handleManualInputChange(e) {
+            const roundIndex = parseInt(e.target.dataset.round, 10);
+            const playerIndex = parseInt(e.target.dataset.player, 10);
+            let value = parseInt(e.target.value.replace(/\D/g, ''), 10);
+            if (isNaN(value) || value < 0) { // Permitindo 0
+                value = null;
+                e.target.value = '';
+            }
+            state.roundsData[roundIndex].scores[playerIndex] = value;
+            const isRoundComplete = !state.roundsData[roundIndex].scores.some(s => s === null || s === '');
+            if (isRoundComplete) {
+                const roundData = state.roundsData[roundIndex];
+                const { order } = determineWinners(roundData.scores, roundData.criteria);
+                roundData.order = order;
+                roundData.inputOrder = null;
+                roundData.tempScoresForOrder = null;
+            }
+            await saveRemoteState();
+            renderUI();
+        }
+
+        function findNextRound() {
+            if (!state || !state.roundsData) return -1;
+            return state.roundsData.findIndex(r => r.scores.every(s => s === null || s === ''));
+        }
+
+        function updateButtonStates() {
+            if (!state) return;
+            const nextRound = findNextRound();
+            numPlayersInput.disabled = tableCreated;
+            createTableBtn.disabled = tableCreated;
+            randomizeOrderBtn.disabled = !playerNamesTextarea.value.trim() || tableCreated;
+            generateAllBtn.disabled = !tableCreated || nextRound === -1 || manualModeToggle.checked;
+            resetBtn.disabled = !tableCreated;
+            let roundInProgressManually = false;
+            if (manualModeToggle.checked && tableCreated && nextRound > -1) {
+                const roundData = state.roundsData[nextRound];
+                roundInProgressManually = roundData && Array.isArray(roundData.inputOrder);
+            }
+            generateRoundBtn.disabled = !tableCreated || nextRound === -1 || roundInProgressManually;
+            if (nextRound !== -1) {
+                generateRoundBtn.textContent = `Gerar rodada ${nextRound + 1}`;
+            } else if(tableCreated) {
+                generateRoundBtn.textContent = 'Completo!';
+            }
+        }
 
         // --- MANIPULADORES DE EVENTOS ---
 
-        saveLobbyUrlBtn.addEventListener('click', () => {
-            const url = lobbyUrlInput.value.trim();
-            if (url && url.startsWith("https://api.npoint.io/")) {
-                LOBBY_ENDPOINT = url;
-                localStorage.setItem('npointLobbyUrl_sorteio', url);
-                init(); 
-            } else {
-                setupError.textContent = 'URL inválida. Por favor, insira uma URL da API do npoint.io.';
-            }
-        });
-
         loadDrawBtn.addEventListener('click', loadSelectedDraw);
-
         createDrawBtn.addEventListener('click', () => {
             lobbyPanel.style.display = 'none';
             newDrawPanel.style.display = 'block';
             newDrawError.textContent = '';
             newDrawNameInput.value = '';
-            newDrawUrlInput.value = '';
         });
-
         cancelNewDrawBtn.addEventListener('click', () => {
             newDrawPanel.style.display = 'none';
             lobbyPanel.style.display = 'flex';
         });
 
-        saveNewDrawBtn.addEventListener('click', () => {
+        saveNewDrawBtn.addEventListener('click', async () => {
             const newName = newDrawNameInput.value.trim();
-            const newUrl = newDrawUrlInput.value.trim();
             if (!newName) {
                 newDrawError.textContent = "O nome do sorteio é obrigatório.";
                 return;
             }
-            if (newUrl && newUrl.startsWith("https://api.npoint.io/")) {
-                const newId = newUrl.split('/').pop();
-                addNewDrawToLobby(newId, newName);
+            saveNewDrawBtn.disabled = true;
+            newDrawError.textContent = "Criando novo sorteio...";
+            const newId = await createNewBinViaProxy();
+            if (newId) {
+                await addNewDrawToLobby(newId, newName);
             } else {
-                newDrawError.textContent = "A URL da API é inválida.";
+                newDrawError.textContent = "Falha ao criar o novo sorteio. Tente novamente.";
             }
+            saveNewDrawBtn.disabled = false;
         });
 
-        createTableBtn.addEventListener('click', () => { /* ... */ });
-        randomizeOrderBtn.addEventListener('click', () => { /* ... */ });
-        generateRoundBtn.addEventListener('click', () => { /* ... */ });
-        generateAllBtn.addEventListener('click', () => { /* ... */ });
-        resetBtn.addEventListener('click', () => { /* ... */ });
-        manualModeToggle.addEventListener('change', renderUI);
-        exportCsvBtn.addEventListener('click', () => { /* ... */ });
-        importCsvInput.addEventListener('change', (event) => { /* ... */ });
+        createTableBtn.addEventListener('click', () => {
+            const numPlayers = parseInt(numPlayersInput.value, 10);
+            if (numPlayers < 3) {
+                updateSyncStatus('error', "O nº de participantes deve ser no mínimo 3.");
+                return;
+            }
+            let names = playerNamesTextarea.value.trim().split(/[\n,]/).map(name => name.trim().toUpperCase()).filter(name => name);
+            if (names.length !== numPlayers) {
+                updateSyncStatus('error', `O nº de nomes (${names.length}) deve ser igual ao nº de participantes (${numPlayers}).`);
+                return;
+            }
+            tableCreated = true;
+            state.config.players = numPlayers;
+            state.config.randomize_win_criteria = randomizeWinCriteriaCheckbox.checked ? 'Y' : 'N';
+            state.columns = Array.from({ length: numPlayers }, (_, i) => `P${i + 1}`);
+            state.names = shuffleArray(names.slice(0, numPlayers));
+            state.roundsData = Array.from({ length: state.config.rounds }, () => ({
+                criteria: null, scores: Array(numPlayers).fill(null), order: [], inputOrder: null, tempScoresForOrder: null
+            }));
+            saveRemoteState().then(renderUI);
+        });
+        
+        randomizeOrderBtn.addEventListener('click', () => {
+             let names = playerNamesTextarea.value.trim().split(/[\n,]/).map(name => name.trim()).filter(name => name);
+            playerNamesTextarea.value = shuffleArray(names).join('\n');
+        });
+
+        generateRoundBtn.addEventListener('click', () => {
+            const nextRound = findNextRound();
+            if (nextRound !== -1) {
+                if(manualModeToggle.checked) {
+                    startManualRound(nextRound);
+                } else {
+                    generateRound(nextRound);
+                    saveRemoteState().then(renderUI);
+                }
+            }
+        });
+        
+        generateAllBtn.addEventListener('click', () => {
+            let nextRound = findNextRound();
+            while(nextRound !== -1) {
+                generateRound(nextRound);
+                nextRound = findNextRound();
+            }
+            saveRemoteState().then(renderUI);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            state.roundsData.forEach(round => {
+                round.scores.fill(null);
+                round.order = [];
+                round.inputOrder = null;
+                round.tempScoresForOrder = null;
+            });
+            saveRemoteState().then(renderUI);
+        });
+        
+        manualModeToggle.addEventListener('change', () => {
+            updateButtonStates();
+            if (tableCreated) { // Só re-renderiza a tabela se ela existir
+                renderUI();
+            }
+        });
+        
+        exportCsvBtn.addEventListener('click', () => {
+            const csvContent = serializeToCsv();
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            const drawName = (lobbyData.draws.find(d => d.id === currentDrawEndpoint.split('/').pop()) || {}).name || 'sorteio';
+            link.setAttribute("download", `${drawName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        importCsvInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const newState = parseFromCsv(e.target.result);
+                    if (!newState) throw new Error("Arquivo CSV inválido.");
+                    state = newState;
+                    tableCreated = true;
+                    saveRemoteState().then(renderUI);
+                } catch (error) {
+                    console.error("Erro ao importar CSV:", error);
+                    updateSyncStatus('error', "Erro ao importar o arquivo.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
 
         // --- INICIALIZAÇÃO ---
         function init() {
-            if (LOBBY_ENDPOINT) {
-                setupPanel.style.display = 'none';
-                lobbyPanel.style.display = 'flex';
-                loadLobby();
-            } else {
-                setupPanel.style.display = 'block';
-                lobbyPanel.style.display = 'none';
-                showMainPanels(false);
-            }
+            loadLobby();
         }
         init();
         
-    // --- CÓDIGO COMPLETO DAS FUNÇÕES MINIMIZADAS ---
-
-    getRandomInt = function(min, max) {
-        const range = max - min + 1;
-        const buffer = new Uint32Array(1);
-        window.crypto.getRandomValues(buffer);
-        return min + (buffer[0] % range);
-    }
-
-    shuffleArray = function(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = getRandomInt(0, i);
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    }
-    
-    updateSyncStatus = function(status, message) {
-        syncStatusEl.dataset.status = status;
-        syncStatusEl.textContent = message;
-    }
-
-    serializeToCsv = function() {
-        if (!state) return "";
-        const binId = currentDrawEndpoint.split('/').pop();
-        const configLine = `CONFIG,rounds,${state.config.rounds},players,${state.config.players},randomize_win_criteria,${state.config.randomize_win_criteria},updatedAt,${state.config.updatedAt},bin_id,${binId}`;
-        const columnsLine = `COLUMNS,${state.columns.join(',')}`;
-        const namesLine = `NAMES,${state.names.join(',')}`;
-        const roundsLines = state.roundsData.map((round, i) => {
-            const roundNum = `R${i + 1}`;
-            const criteria = round.criteria || '';
-            const scores = round.scores.join(',');
-            const order = round.order && round.order.length > 0 ? `ORDER,${round.order.join(',')}` : 'ORDER,,';
-            return `${roundNum},${criteria},${scores},${order}`;
-        }).join('\n');
-        return [configLine, columnsLine, namesLine, roundsLines].join('\n');
-    }
-
-    parseFromCsv = function(csvString) {
-        if (!csvString) return null;
-        const lines = csvString.trim().split('\n');
-        const newState = { config: {}, columns: [], names: [], roundsData: [] };
-        lines.forEach(line => {
-            const parts = line.split(',');
-            const type = parts[0];
-            if (type === 'CONFIG') {
-                newState.config.rounds = parseInt(parts[2], 10);
-                newState.config.players = parseInt(parts[4], 10);
-                newState.config.randomize_win_criteria = parts[6];
-                newState.config.updatedAt = parts[8];
-            } else if (type === 'COLUMNS') {
-                newState.columns = parts.slice(1);
-            } else if (type === 'NAMES') {
-                newState.names = parts.slice(1);
-            } else if (type.startsWith('R')) {
-                const roundIndex = parseInt(type.substring(1), 10) - 1;
-                if (!newState.roundsData[roundIndex]) {
-                     newState.roundsData[roundIndex] = { scores: [], order: [] };
-                }
-                newState.roundsData[roundIndex].criteria = parts[1];
-                const orderIndex = parts.indexOf('ORDER');
-                newState.roundsData[roundIndex].scores = parts.slice(2, orderIndex).map(s => s ? parseInt(s, 10) : null);
-                newState.roundsData[roundIndex].order = parts.slice(orderIndex + 1).map(o => o ? parseInt(o, 10) : null);
-            }
-        });
-        if (isNaN(newState.config.rounds)) return null;
-        newState.roundsData.length = newState.config.rounds;
-        for(let i = 0; i < newState.config.rounds; i++) {
-            if(!newState.roundsData[i]) {
-                newState.roundsData[i] = { scores: Array(newState.config.players).fill(null), order: [] };
-            }
-        }
-        return newState;
-    }
-
-    determineWinners = function(scores, criteria) {
-        let indexedScores = scores.map((score, index) => ({ score, index: index + 1 }))
-                                  .filter(item => item.score !== null && !isNaN(item.score));
-        indexedScores.sort((a, b) => {
-            let diff = (criteria === 'MAX') ? b.score - a.score : a.score - b.score;
-            return diff !== 0 ? diff : (getRandomInt(1, 100) > 50 ? 1 : -1);
-        });
-        const places = Array(scores.length).fill(null);
-        indexedScores.slice(0, 3).forEach((item, i) => {
-            places[item.index - 1] = i + 1;
-        });
-        return { order: places };
-    }
-    
-    generateRound = function(roundIndex) {
-        const roundData = state.roundsData[roundIndex];
-        if (!roundData.criteria) {
-            roundData.criteria = (state.config.randomize_win_criteria === 'Y') ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
-        }
-        roundData.scores = Array.from({ length: state.config.players }, () => getRandomInt(1, 100));
-        const { order } = determineWinners(roundData.scores, roundData.criteria);
-        roundData.order = order;
-    }
-
-    renderUI = function() {
-        if (!state) return;
-        numPlayersInput.value = state.config.players;
-        randomizeWinCriteriaCheckbox.checked = state.config.randomize_win_criteria === 'Y';
-        playerNamesTextarea.value = state.names.join('\n');
-        if (state.config.updatedAt) {
-            lastUpdateEl.textContent = `Última atualização: ${new Date(state.config.updatedAt).toLocaleString()}`;
-        }
-        tableThead.innerHTML = '';
-        tableTbody.innerHTML = '';
-        if (!tableCreated) {
-            updateButtonStates();
-            return;
-        }
-        const headerRow1 = document.createElement('tr');
-        const headerRow2 = document.createElement('tr');
-        headerRow1.innerHTML = '<th></th>';
-        headerRow2.innerHTML = '<th>SORTEIO</th>';
-        state.columns.forEach((colId, index) => {
-            const th1 = document.createElement('th');
-            const nameInput = document.createElement('input');
-            nameInput.type = 'text';
-            nameInput.value = state.names[index] || '';
-            nameInput.placeholder = `Nome ${index + 1}`;
-            nameInput.className = 'player-name-input';
-            nameInput.dataset.index = index;
-            nameInput.addEventListener('change', (e) => {
-                state.names[e.target.dataset.index] = e.target.value.toUpperCase();
-                saveRemoteState();
-            });
-            th1.appendChild(nameInput);
-            headerRow1.appendChild(th1);
-            const th2 = document.createElement('th');
-            th2.textContent = `PESSOA ${index + 1}`;
-            headerRow2.appendChild(th2);
-        });
-        headerRow1.innerHTML += '<th></th>';
-        headerRow2.innerHTML += '<th>CRITÉRIO</th>';
-        tableThead.appendChild(headerRow1);
-        tableThead.appendChild(headerRow2);
-        state.roundsData.forEach((round, roundIndex) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td><strong>R${roundIndex + 1}</strong></td>`;
-            const isManualModeActive = manualModeToggle.checked;
-            const nextOpenRound = findNextRound();
-            round.scores.forEach((score, playerIndex) => {
-                const td = document.createElement('td');
-                if (isManualModeActive && roundIndex === nextOpenRound) {
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.min = 1;
-                    input.max = 100;
-                    input.className = 'manual-input';
-                    input.dataset.round = roundIndex;
-                    input.dataset.player = playerIndex;
-                    const firstEmptyInput = round.scores.findIndex(s => s === null);
-                    input.disabled = playerIndex !== firstEmptyInput;
-                    input.addEventListener('change', handleManualInputChange);
-                    td.appendChild(input);
-                } else {
-                    let content = '';
-                    if (score !== null) {
-                        content = `${score} `;
-                        const place = round.order[playerIndex];
-                        if (place) {
-                            content += `<span class="winner-${place}">[${place}º]</span>`;
-                        }
-                    }
-                    td.innerHTML = content;
-                }
-                tr.appendChild(td);
-            });
-            const criteriaTd = document.createElement('td');
-            if(round.criteria) {
-                 criteriaTd.innerHTML = `<span class="win-criteria">${round.criteria === 'MAX' ? 'MAIOR' : 'MENOR'} vence</span>`;
-            }
-            tr.appendChild(criteriaTd);
-            tableTbody.appendChild(tr);
-        });
-        updateButtonStates();
-    }
-    
-    handleManualInputChange = function(e) {
-        const roundIndex = parseInt(e.target.dataset.round, 10);
-        const playerIndex = parseInt(e.target.dataset.player, 10);
-        let value = parseInt(e.target.value, 10);
-        if (isNaN(value) || value < 1 || value > 100) {
-            value = null;
-            e.target.value = '';
-        }
-        state.roundsData[roundIndex].scores[playerIndex] = value;
-        const isRoundComplete = !state.roundsData[roundIndex].scores.includes(null);
-        if (isRoundComplete) {
-            const roundData = state.roundsData[roundIndex];
-            if (state.config.randomize_win_criteria === 'Y') {
-                roundData.criteria = getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX';
-            } else {
-                roundData.criteria = 'MAX';
-            }
-            const { order } = determineWinners(roundData.scores, roundData.criteria);
-            roundData.order = order;
-            saveRemoteState();
-        }
-        renderUI();
-    }
-
-    findNextRound = function() {
-        if (!state || !state.roundsData) return -1;
-        return state.roundsData.findIndex(r => r.scores.some(s => s === null) || r.scores.length === 0);
-    }
-
-    updateButtonStates = function() {
-        if (!state) return;
-        const nextRound = findNextRound();
-        numPlayersInput.disabled = tableCreated;
-        createTableBtn.disabled = tableCreated;
-        randomizeOrderBtn.disabled = !playerNamesTextarea.value.trim();
-        generateRoundBtn.disabled = !tableCreated || nextRound === -1;
-        generateAllBtn.disabled = !tableCreated || nextRound === -1;
-        resetBtn.disabled = !tableCreated;
-        if (nextRound !== -1) {
-            generateRoundBtn.textContent = `Gerar rodada ${nextRound + 1}`;
-        } else if(tableCreated) {
-            generateRoundBtn.textContent = 'Completo!';
-        }
-    }
-
-    createTableBtn.addEventListener('click', () => {
-        const numPlayers = parseInt(numPlayersInput.value, 10);
-        if (numPlayers < 3) {
-            updateSyncStatus('error', "O número de participantes deve ser no mínimo 3.");
-            return;
-        }
-        tableCreated = true;
-        let names = playerNamesTextarea.value.trim().split(/[\n,]/)
-            .map(name => name.trim().toUpperCase()).filter(name => name);
-        while (names.length < numPlayers) {
-            names.push(`JOGADOR ${names.length + 1}`);
-        }
-        names = names.slice(0, numPlayers);
-        state.config.players = numPlayers;
-        state.config.randomize_win_criteria = randomizeWinCriteriaCheckbox.checked ? 'Y' : 'N';
-        state.columns = Array.from({ length: numPlayers }, (_, i) => `P${i + 1}`);
-        state.names = shuffleArray([...names]);
-        state.roundsData = Array.from({ length: state.config.rounds }, () => ({
-            criteria: null,
-            scores: Array(numPlayers).fill(null),
-            order: []
-        }));
-        saveRemoteState();
-    });
-    
-    randomizeOrderBtn.addEventListener('click', () => {
-         let names = playerNamesTextarea.value.trim().split(/[\n,]/)
-            .map(name => name.trim()).filter(name => name);
-        playerNamesTextarea.value = shuffleArray(names).join('\n');
-    });
-
-    generateRoundBtn.addEventListener('click', () => {
-        const nextRound = findNextRound();
-        if (nextRound !== -1) {
-            generateRound(nextRound);
-            saveRemoteState();
-        }
-    });
-    
-    generateAllBtn.addEventListener('click', () => {
-        let nextRound = findNextRound();
-        while(nextRound !== -1) {
-            generateRound(nextRound);
-            nextRound = findNextRound();
-        }
-        saveRemoteState();
-    });
-
-    resetBtn.addEventListener('click', () => {
-        state.roundsData = Array.from({ length: state.config.rounds }, () => ({
-            criteria: null,
-            scores: Array(state.config.players).fill(null),
-            order: []
-        }));
-        saveRemoteState();
-    });
-    
-    exportCsvBtn.addEventListener('click', () => {
-        const csvContent = serializeToCsv();
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        const drawName = lobbyData.draws[currentDrawEndpoint.split('/').pop()] || 'sorteio';
-        link.setAttribute("download", `${drawName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
-
-    importCsvInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const newState = parseFromCsv(e.target.result);
-                if (!newState) throw new Error("Arquivo CSV inválido.");
-                state = newState;
-                tableCreated = true;
-                saveRemoteState();
-            } catch (error) {
-                console.error("Erro ao importar CSV:", error);
-                updateSyncStatus('error', "Erro ao importar o arquivo.");
-            }
-        };
-        reader.readAsText(file);
-        event.target.value = '';
-    });
-
     });
     </script>
 
