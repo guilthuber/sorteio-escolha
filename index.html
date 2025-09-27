@@ -779,8 +779,6 @@
                             
                             const input = document.createElement('input');
                             input.type = "text";
-                            input.inputMode = "numeric";
-                            input.pattern = "[0-9]*";
                             input.className = 'manual-input';
                             input.dataset.round = roundIndex;
                             input.dataset.player = playerIndex;
@@ -798,7 +796,12 @@
                             td.appendChild(wrapper);
 
                             const tempScore = round.tempScoresForOrder ? round.tempScoresForOrder[playerIndex] : '-';
-                            if(playOrder > 0) td.innerHTML += `<span class="play-order-indicator">(${playOrder}º a jogar - Sorteado: ${tempScore})</span>`;
+                            if (playOrder > 0) {
+                                const indicator = document.createElement('span');
+                                indicator.className = 'play-order-indicator';
+                                indicator.innerHTML = `(${playOrder}º a jogar - Sorteado: ${tempScore})`;
+                                td.appendChild(indicator);
+                            }
                         } else {
                             td.innerHTML = `${score} ${round.order[playerIndex] ? `<span class="winner-${round.order[playerIndex]}">[${round.order[playerIndex]}º]</span>` : ''}`;
                         }
@@ -824,27 +827,27 @@
         async function handleManualInputChange(e) {
             const roundIndex = parseInt(e.target.dataset.round, 10);
             const playerIndex = parseInt(e.target.dataset.player, 10);
-            let value = parseInt(e.target.value.replace(/\D/g, ''), 10);
-            if (isNaN(value) || value < 0) { // Permitindo 0
-                value = null;
-                e.target.value = '';
-            }
+            const value = e.target.value; // Get the raw string value
+
             state.roundsData[roundIndex].scores[playerIndex] = value;
-            const isRoundComplete = !state.roundsData[roundIndex].scores.some(s => s === null || s === '');
+            
+            // A round is complete when all players have an entry (initial state is null, empty string is a valid entry)
+            const isRoundComplete = !state.roundsData[roundIndex].scores.some(s => s === null);
             if (isRoundComplete) {
                 const roundData = state.roundsData[roundIndex];
-                const { order } = determineWinners(roundData.scores, roundData.criteria);
-                roundData.order = order;
+                // In manual mode, the input is the result. No winners to determine.
+                // Clear the temporary ordering data to signify the manual round is done.
                 roundData.inputOrder = null;
                 roundData.tempScoresForOrder = null;
             }
+            
             await saveRemoteState();
             renderUI();
         }
 
         function findNextRound() {
             if (!state || !state.roundsData) return -1;
-            return state.roundsData.findIndex(r => r.scores.every(s => s === null || s === ''));
+            return state.roundsData.findIndex(r => r.scores.every(s => s === null));
         }
 
         function updateButtonStates() {
@@ -1008,5 +1011,7 @@
     </script>
 
 </body>
-</html>
+</html></script>
 
+</body>
+</html>
