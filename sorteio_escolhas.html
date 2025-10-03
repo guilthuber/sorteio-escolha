@@ -839,7 +839,7 @@
                         if (playOrderIndex > -1) {
                             const indicator = document.createElement('span');
                             indicator.className = 'play-order-indicator';
-                            indicator.innerHTML = `(${playOrderIndex + 1}º a jogar - 🎲 ${tempScore})`;
+                            indicator.innerHTML = `(${playOrderIndex + 1}º a escolher - 🎲 ${tempScore})`;
                             td.appendChild(indicator);
                         }
                     } else {
@@ -871,7 +871,7 @@
 
             for (const pId in state.names) {
                 if (pId !== playerId && state.names[pId].knownIds && state.names[pId].knownIds.includes(userId)) {
-                    alert(`Você está tentando jogar como '${state.names[playerId].name}', mas seu navegador está associado ao jogador '${state.names[pId].name}'.\n\nUse um navegador diferente ou limpe os dados do site se isso for um erro.`);
+                    alert(`Você está tentando escolher como '${state.names[playerId].name}', mas você provavelmente é o '${state.names[pId].name}'.\n\nSe controle! \n\nMas se for um erro, fale com o China!`);
                     return false; 
                 }
             }
