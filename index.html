@@ -579,7 +579,7 @@
         // --- LÓGICA DE PERSISTÊNCIA (CSV) ---
         function serializeToCsv() {
             if (!state) return "";
-            const configLine = `CONFIG,rounds,${state.config.rounds},players,${state.config.players},randomize_win_criteria,${state.config.randomize_win_criteria},updatedAt,${state.config.updatedAt}`;
+            const configLine = `CONFIG,rounds,${state.config.rounds},players,${state.config.players},randomize_win_criteria,${state.config.randomize_win_criteria},manual_mode,${manualModeToggle.checked ? 'Y' : 'N'},updatedAt,${state.config.updatedAt}`;
             const columnsLine = `COLUMNS,${state.columns.join(',')}`;
             const namesLine = `NAMES,${state.names.join(',')}`;
             const roundsLines = state.roundsData.map((round) => {
@@ -602,7 +602,19 @@
                 const parts = line.split(',');
                 const type = parts[0];
                 if (type === 'CONFIG') {
-                    newState.config = { rounds: parseInt(parts[2], 10), players: parseInt(parts[4], 10), randomize_win_criteria: parts[6], updatedAt: parts[8] };
+                    const roundsIndex = parts.indexOf('rounds');
+                    const playersIndex = parts.indexOf('players');
+                    const rwcIndex = parts.indexOf('randomize_win_criteria');
+                    const mmIndex = parts.indexOf('manual_mode');
+                    const uaIndex = parts.indexOf('updatedAt');
+
+                    newState.config = {
+                        rounds: roundsIndex > -1 ? parseInt(parts[roundsIndex + 1], 10) : 12,
+                        players: playersIndex > -1 ? parseInt(parts[playersIndex + 1], 10) : 3,
+                        randomize_win_criteria: rwcIndex > -1 ? parts[rwcIndex + 1] : 'N',
+                        manual_mode: mmIndex > -1 ? parts[mmIndex + 1] : 'N',
+                        updatedAt: uaIndex > -1 ? parts[uaIndex + 1] : new Date().toISOString()
+                    };
                 } else if (type === 'COLUMNS') {
                     newState.columns = parts.slice(1);
                 } else if (type === 'NAMES') {
@@ -614,7 +626,11 @@
                     const inputOrderIndex = parts.indexOf('INPUT_ORDER');
                     const tempScoresIndex = parts.indexOf('TEMP_SCORES');
                     newState.roundsData[roundIndex].criteria = parts[1];
-                    newState.roundsData[roundIndex].scores = parts.slice(2, orderIndex).map(s => s ? parseInt(s, 10) : null);
+                    newState.roundsData[roundIndex].scores = parts.slice(2, orderIndex).map(s => {
+                        if (s === null || s.trim() === '') return null;
+                        const num = parseInt(s, 10);
+                        return isNaN(num) ? s.trim() : num;
+                    });
                     if (orderIndex > -1) newState.roundsData[roundIndex].order = parts.slice(orderIndex + 1, inputOrderIndex).map(o => o ? parseInt(o, 10) : null);
                     if (inputOrderIndex > -1) newState.roundsData[roundIndex].inputOrder = parts.slice(inputOrderIndex + 1, tempScoresIndex).filter(o => o).map(o => parseInt(o, 10));
                     if (tempScoresIndex > -1) newState.roundsData[roundIndex].tempScoresForOrder = parts.slice(tempScoresIndex + 1).filter(s => s).map(s => parseInt(s, 10));
@@ -730,6 +746,8 @@
         function renderUI() {
             if (!state) return;
 
+            manualModeToggle.checked = state.config.manual_mode === 'Y';
+
             if (!tableCreated) {
                 numPlayersInput.value = state.config.players;
                 randomizeWinCriteriaCheckbox.checked = state.config.randomize_win_criteria === 'Y';
@@ -794,16 +812,16 @@
                                 wrapper.appendChild(confirmBtn);
                             }
                             td.appendChild(wrapper);
-
-                            const tempScore = round.tempScoresForOrder ? round.tempScoresForOrder[playerIndex] : '-';
-                            if (playOrder > 0) {
-                                const indicator = document.createElement('span');
-                                indicator.className = 'play-order-indicator';
-                                indicator.innerHTML = `(${playOrder}º a jogar - Sorteado: ${tempScore})`;
-                                td.appendChild(indicator);
-                            }
                         } else {
                             td.innerHTML = `${score} ${round.order[playerIndex] ? `<span class="winner-${round.order[playerIndex]}">[${round.order[playerIndex]}º]</span>` : ''}`;
+                        }
+
+                        const tempScore = round.tempScoresForOrder ? round.tempScoresForOrder[playerIndex] : '-';
+                        if (playOrder > 0) {
+                            const indicator = document.createElement('span');
+                            indicator.className = 'play-order-indicator';
+                            indicator.innerHTML = `(${playOrder}º a jogar - Sorteado: ${tempScore})`;
+                            td.appendChild(indicator);
                         }
                     } else {
                         let content = '';
@@ -831,15 +849,7 @@
 
             state.roundsData[roundIndex].scores[playerIndex] = value;
             
-            // A round is complete when all players have an entry (initial state is null, empty string is a valid entry)
-            const isRoundComplete = !state.roundsData[roundIndex].scores.some(s => s === null);
-            if (isRoundComplete) {
-                const roundData = state.roundsData[roundIndex];
-                // In manual mode, the input is the result. No winners to determine.
-                // Clear the temporary ordering data to signify the manual round is done.
-                roundData.inputOrder = null;
-                roundData.tempScoresForOrder = null;
-            }
+
             
             await saveRemoteState();
             renderUI();
@@ -916,6 +926,7 @@
             tableCreated = true;
             state.config.players = numPlayers;
             state.config.randomize_win_criteria = randomizeWinCriteriaCheckbox.checked ? 'Y' : 'N';
+            state.config.manual_mode = manualModeToggle.checked ? 'Y' : 'N';
             state.columns = Array.from({ length: numPlayers }, (_, i) => `P${i + 1}`);
             state.names = shuffleArray(names.slice(0, numPlayers));
             state.roundsData = Array.from({ length: state.config.rounds }, () => ({
@@ -961,6 +972,10 @@
         });
         
         manualModeToggle.addEventListener('change', () => {
+            if(state) {
+                state.config.manual_mode = manualModeToggle.checked ? 'Y' : 'N';
+                saveRemoteState();
+            }
             updateButtonStates();
             if (tableCreated) { // Só re-renderiza a tabela se ela existir
                 renderUI();
