@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteio de Rodadas</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --primary-color: #2a2a2a;
+            --secondary-color: #3c3c3c;
+            --text-color: #f0f0f0;
+            --accent-color: #007bff;
+            --accent-hover: #0056b3;
+            --winner1: #ffd700;
+            --winner2: #c0c0c0;
+            --winner3: #cd7f32;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+        }
+
+        .panel {
+            background-color: var(--primary-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        #newDrawPanel {
+            text-align: center;
+        }
+
+        #newDrawNameInput {
+             background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        #lobbyPanel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #drawSelector {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            padding: 10px;
+            min-width: 200px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        textarea {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 5px var(--accent-color);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button, input[type="file"]::-webkit-file-upload-button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover, input[type="file"]::-webkit-file-upload-button:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+        button.secondary:hover {
+            background-color: #555;
+        }
+        
+        button.danger {
+            background-color: var(--error-color);
+        }
+        button.danger:hover {
+            background-color: #a72834;
+        }
+        
+        button.confirm-btn {
+            padding: 5px 10px;
+            margin-left: 5px;
+            font-size: 0.8em;
+            background-color: var(--success-color);
+        }
+        button.confirm-btn:hover {
+            background-color: #218838;
+        }
+
+
+        .checkbox-group, .switch-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .switch input { display: none; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        #syncStatus {
+            margin-top: 15px;
+            font-style: italic;
+            transition: color 0.5s;
+        }
+
+        #syncStatus[data-status="synced"] { color: var(--success-color); }
+        #syncStatus[data-status="saving"], #syncStatus[data-status="updating"] { color: var(--accent-color); }
+        #syncStatus[data-status="error"], #syncStatus[data-status="offline"] { color: var(--error-color); }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--secondary-color);
+            vertical-align: middle;
+        }
+
+        thead th {
+            background-color: var(--accent-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        tbody tr:nth-child(odd) {
+            background-color: var(--primary-color);
+        }
+        
+        tbody tr:nth-child(even) {
+            background-color: #222;
+        }
+
+        .player-name-input {
+            width: 90%;
+            padding: 5px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--secondary-color);
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .manual-input-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .manual-input {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+            background-color: #444;
+            color: white;
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+        }
+        .manual-input:focus {
+            outline: 2px solid var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-color);
+        }
+        .manual-input:disabled {
+            background-color: transparent;
+            border: none;
+            color: var(--text-color);
+        }
+
+        .winner-1 { font-weight: bold; color: var(--winner1); }
+        .winner-2 { font-weight: bold; color: var(--winner2); }
+        .winner-3 { font-weight: bold; color: var(--winner3); }
+
+        .nutella-buff {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
+        .nutella-nerf {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
+        .win-criteria {
+            font-size: 0.8em;
+            color: #ccc;
+            white-space: nowrap;
+        }
+        
+        .play-order-indicator {
+            font-size: 0.75em;
+            color: #aaa;
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn-file {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Sorteio de Rodadas</h1>
+
+        <div style="text-align: center; margin-bottom: 20px; display: flex; justify-content: center; gap: 20px;">            
+            <button id="forceRefreshBtn" style="background-color: var(--warning-color, #ff9800); color: white; padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer;">Atualizar Página (Limpar Cache)</button>
+        </div>
+
+        <!-- PAINEL DO LOBBY -->
+        <div id="lobbyPanel" class="panel">
+            <label for="drawSelector">Sorteios Salvos:</label>
+            <select id="drawSelector"></select>
+            <button id="loadDrawBtn">Carregar Sorteio</button>
+            <button id="createDrawBtn">Novo Sorteio</button>
+        </div>
+
+        <!-- PAINEL DE CRIAÇÃO DE SORTEIO -->
+        <div id="newDrawPanel" class="panel" style="display: none;">
+            <h2>Criar Novo Sorteio</h2>
+            <div class="form-group">
+                <label for="newDrawNameInput">Nome do Sorteio:</label>
+                <input type="text" id="newDrawNameInput" placeholder="Ex: Sorteio de Férias">
+            </div>
+            <div class="button-group">
+                <button id="saveNewDrawBtn">Salvar Novo Sorteio</button>
+                <button id="cancelNewDrawBtn" class="secondary">Cancelar</button>
+            </div>
+            <p id="newDrawError" style="color: var(--error-color);"></p>
+        </div>
+
+        <!-- CONTEÚDO DO SORTEIO CARREGADO -->
+        <div id="drawContent" style="display: none; width: 100%;">
+            <!-- PAINEL DE CONFIGURAÇÃO DO SORTEIO -->
+            <div id="configPanel" class="panel">
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label for="numPlayers">Nº de participantes</label>
+                        <input type="number" id="numPlayers" value="2" min="2">
+                        <label for="playerNames" style="margin-top: 15px;">Nomes (um por linha ou separados por vírgula)</label>
+                        <textarea id="playerNames" placeholder="Ex: Ana <ana@email.com>, Beto, Carol <carol@email.com>"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group" title="Quando marcado, a cada rodada é sorteado se vence o MAIOR ou o MENOR número.">
+                            <input type="checkbox" id="randomizeWinCriteria">
+                            <label for="randomizeWinCriteria">Randomizar critério de vitória</label>
+                        </div>
+                        <div class="checkbox-group" title="Nutella - Bad Luck Protection: 1º e 2º sofrem nerf (-20, -10), penúltimo e último ganham buff (+10, +20). Acumula durante todo o sorteio.">
+                            <input type="checkbox" id="nutellaModeCheckbox">
+                            <label for="nutellaModeCheckbox">Nutella (Bad Luck Protection)</label>
+                        </div>
+                        <div class="switch-group">
+                            <label class="switch">
+                                <input type="checkbox" id="manualModeToggle">
+                                <span class="slider"></span>
+                            </label>
+                            <label for="manualModeToggle">Entrada manual por turno</label>
+                        </div>
+                        <div id="syncStatus" aria-live="polite">Carregando...</div>
+                        <div id="lastUpdate" style="font-size: 0.8em; color: #aaa;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ações</label>
+                        <div class="button-group">
+                            <button id="createTableBtn">Criar tabela</button>
+                            <button id="randomizeOrderBtn">Randomizar ordem</button>
+                            <button id="generateRoundBtn" disabled>Gerar Nova Rodada</button>
+                            <button id="generateAllBtn" style="display: none;">Gerar todas restantes</button>
+                            <button id="resetBtn" class="danger">Resetar Sorteio</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA PRINCIPAL -->
+            <div class="panel table-container" id="tablePanel">
+                <table id="resultsTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <!-- RODAPÉ -->
+            <div class="footer panel" id="footerPanel">
+                <button id="exportJsonBtn">Exportar JSON</button>
+                <div class="file-input-wrapper">
+                    <span class="btn-file">Importar JSON</span>
+                    <input type="file" id="importJsonInput" accept=".json,application/json">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const LOBBY_ENDPOINT = 'https://api.npoint.io/f043889085d5b4475459';
+    const NPOINT_PROXY_URL = 'https://npoint-proxy.githuberzinho.workers.dev/npoint-documents';
+
+    let currentDrawId = '';
+    let lobbyData = { draws: [] };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- ELEMENTOS DO DOM ---
+        const lobbyPanel = document.getElementById('lobbyPanel');
+        const newDrawPanel = document.getElementById('newDrawPanel');
+        const drawContent = document.getElementById('drawContent');
+        const drawSelector = document.getElementById('drawSelector');
+        const loadDrawBtn = document.getElementById('loadDrawBtn');
+        const createDrawBtn = document.getElementById('createDrawBtn');
+        const newDrawNameInput = document.getElementById('newDrawNameInput');
+        const saveNewDrawBtn = document.getElementById('saveNewDrawBtn');
+        const cancelNewDrawBtn = document.getElementById('cancelNewDrawBtn');
+        const newDrawError = document.getElementById('newDrawError');
+        const numPlayersInput = document.getElementById('numPlayers');
+        const playerNamesTextarea = document.getElementById('playerNames');
+        const randomizeWinCriteriaCheckbox = document.getElementById('randomizeWinCriteria');
+        const nutellaModeCheckbox = document.getElementById('nutellaModeCheckbox');
+        const manualModeToggle = document.getElementById('manualModeToggle');
+        const createTableBtn = document.getElementById('createTableBtn');
+        const randomizeOrderBtn = document.getElementById('randomizeOrderBtn');
+        const generateRoundBtn = document.getElementById('generateRoundBtn');
+        const generateAllBtn = document.getElementById('generateAllBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const syncStatusEl = document.getElementById('syncStatus');
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        const tableThead = document.querySelector('#resultsTable thead');
+        const tableTbody = document.querySelector('#resultsTable tbody');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+        const importJsonInput = document.getElementById('importJsonInput');
+        const forceRefreshBtn = document.getElementById('forceRefreshBtn');
+
+        let state = null;
+        let tableCreated = false;
+        let isSaving = false;
+        let pollIntervalId = null;
+
+        // --- FUNÇÕES DE IDENTIFICAÇÃO E UTILITÁRIAS ---
+        function getOrSetUserId() {
+            let userId = localStorage.getItem('sorteioUserId');
+            if (!userId) {
+                userId = `user-${crypto.randomUUID()}`;
+                localStorage.setItem('sorteioUserId', userId);
+            }
+            return userId;
+        }
+
+        const getRandomInt = (min, max) => {
+            const range = max - min + 1;
+            const buffer = new Uint32Array(1);
+            window.crypto.getRandomValues(buffer);
+            return min + (buffer[0] % range);
+        };
+        const shuffleArray = (array) => {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = getRandomInt(0, i);
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+        const updateSyncStatus = (status, message) => {
+            syncStatusEl.dataset.status = status;
+            syncStatusEl.textContent = message;
+        };
+
+        // --- LÓGICA DO LOBBY ---
+        async function loadLobby() {
+            try {
+                // Adicionado timestamp para evitar cache
+                const response = await fetch(`${LOBBY_ENDPOINT}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!response.ok) throw new Error("Não foi possível carregar o lobby.");
+                const data = await response.json();
+                lobbyData = data && Array.isArray(data.draws) ? data : { draws: [] };
+                populateDrawSelector();
+            } catch (error) {
+                console.error("Erro no Lobby:", error);
+                lobbyPanel.innerHTML = `<strong>Erro ao carregar o Lobby. Verifique a URL e a conexão. (${LOBBY_ENDPOINT})</strong><br><small>${error.message}</small>`;
+            }
+        }
+
+        function populateDrawSelector() {
+            drawSelector.innerHTML = '<option value="">-- Selecione um Sorteio --</option>';
+            lobbyData.draws.forEach(draw => {
+                const option = document.createElement('option');
+                option.value = draw.id;
+                const date = new Date(draw.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+                option.textContent = `${draw.name} (${date})`;
+                drawSelector.appendChild(option);
+            });
+        }
+
+        async function saveLobby() {
+            try {
+                const response = await fetch(LOBBY_ENDPOINT, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(lobbyData)
+                });
+                if (!response.ok) throw new Error("Falha ao salvar o lobby.");
+                return true;
+            } catch (error) {
+                console.error("Erro ao salvar lobby:", error);
+                return false;
+            }
+        }
+
+        async function createNewBinViaProxy() {
+            const initialContents = JSON.stringify({}); // JSON vazio
+            const payload = { contents: initialContents };
+            try {
+                const res = await fetch(NPOINT_PROXY_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error(`Proxy returned status ${res.status}`);
+                const data = await res.json();
+                return (data && data.token) ? data.token : null;
+            } catch (e) {
+                console.error('Error creating new bin via proxy:', e);
+                return null;
+            }
+        }
+
+        async function addNewDrawToLobby(id, name) {
+            const newDraw = { name, id, createdAt: new Date().toISOString() };
+            lobbyData.draws.push(newDraw);
+            const success = await saveLobby();
+            if (success) {
+                newDrawPanel.style.display = 'none';
+                lobbyPanel.style.display = 'flex';
+                populateDrawSelector();
+                drawSelector.value = id;
+                await loadSelectedDraw();
+            } else {
+                newDrawError.textContent = "Não foi possível salvar o novo sorteio no lobby.";
+                lobbyData.draws.pop();
+            }
+        }
+
+        async function loadSelectedDraw() {
+            if (pollIntervalId) clearInterval(pollIntervalId);
+            pollIntervalId = null;
+            currentDrawId = drawSelector.value;
+            if (!currentDrawId) {
+                state = null;
+                drawContent.style.display = 'none';
+                return;
+            }
+            await fetchRemoteState();
+            drawContent.style.display = 'block';
+        }
+
+        // --- LÓGICA DE REDE (JSON) ---
+        async function fetchRemoteState() {
+            if (!currentDrawId) return;
+            try {
+                updateSyncStatus('updating', 'Carregando dados...');
+                // Adicionado timestamp para evitar cache
+                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                state = (Object.keys(data).length > 0) ? data : null;
+
+                // Remove old_config se existir ao carregar
+                if (state && state.old_config) {
+                    delete state.old_config;
+                }
+
+                if (state && !state.nutella_buffs) {
+                    state.nutella_buffs = {};
+                }
+
+                if (state && state.config && state.config.nutella_mode === undefined) {
+                    state.config.nutella_mode = false;
+                }
+
+                tableCreated = state && state.columns && state.columns.length > 0;
+                if (!state) {
+                     state = {
+                        config: { idnpoint: currentDrawId, players: 2, randomize_win_criteria: false, manual_mode: false, nutella_mode: false, updatedAt: new Date().toISOString() },
+                        columns: [],
+                        names: {},
+                        rounds: [],
+                        segredos: {},
+                        nutella_buffs: {}
+                    };
+                    tableCreated = false;
+                }
+                renderUI();
+                updateSyncStatus('synced', 'Sincronizado');
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+                updateSyncStatus('offline', 'Falha ao carregar. Verifique a URL e a conexão.');
+            }
+        }
+
+        async function saveRemoteState() {
+            if (!currentDrawId || !state) return;
+            if (isSaving) return;
+            isSaving = true;
+            updateSyncStatus('saving', 'Salvando...');
+            
+            // Cria cópia profunda
+            const currentState = JSON.parse(JSON.stringify(state));
+            currentState.config.updatedAt = new Date().toISOString();
+            
+            // Garante remoção de old_config
+            if (currentState.old_config) delete currentState.old_config;
+
+            try {
+                const response = await fetch(`https://api.npoint.io/${currentDrawId}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(currentState)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+                }
+                
+                state = currentState; 
+                updateSyncStatus('synced', 'Sincronizado');
+            } catch (error) {
+                console.error("Erro ao salvar dados:", error);
+                if (error.message.includes('500')) {
+                    updateSyncStatus('error', 'Erro no servidor (500). Tente novamente em instantes.');
+                } else {
+                    updateSyncStatus('error', 'Falha ao salvar. Verifique conexão.');
+                }
+            } finally {
+                isSaving = false;
+            }
+        }
+        
+        async function pollForChanges() {
+            if (!currentDrawId || !state) return;
+            try {
+                // Adicionado timestamp para evitar cache
+                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!response.ok) return;
+                const remoteState = await response.json();
+                if (remoteState && remoteState.config && remoteState.config.updatedAt > state.config.updatedAt) {
+                    updateSyncStatus('updating', 'Atualizando...');
+                    state = remoteState;
+                    tableCreated = state.columns.length > 0;
+                    renderUI();
+                    updateSyncStatus('synced', 'Sincronizado');
+                }
+            } catch (error) {
+                console.error("Erro durante o polling:", error);
+            }
+        }
+
+        // --- LÓGICA DO SORTEIO ---
+        function determineWinners(scores, criteria) {
+            let indexedScores = Object.entries(scores)
+                .map(([playerId, score]) => ({ playerId, score }))
+                .filter(item => item.score !== null && !isNaN(item.score));
+
+            indexedScores.sort((a, b) => {
+                let diff = (criteria === 'MAX') ? b.score - a.score : a.score - b.score;
+                return diff !== 0 ? diff : (getRandomInt(1, 100) > 50 ? 1 : -1);
+            });
+            
+            const orderedPlayerIds = indexedScores.map(item => item.playerId);
+            return { orderedPlayerIds };
+        }
+
+        function applyNutellaBuffs(playerId, baseValue, criterion) {
+            if (!state.config.nutella_mode) return baseValue;
+            if (!state.nutella_buffs) state.nutella_buffs = {};
+
+            const buff = state.nutella_buffs[playerId] || 0;
+            let adjustedValue = baseValue;
+
+            if (criterion === 'MAX') {
+                adjustedValue = baseValue + buff;
+            } else {
+                adjustedValue = baseValue - buff;
+            }
+
+            return Math.max(1, Math.min(100, adjustedValue));
+        }
+
+        function calculateNutellaAdjustments(orderedPlayerIds, criterion) {
+            if (!state.config.nutella_mode) return;
+            if (!state.nutella_buffs) state.nutella_buffs = {};
+
+            const totalPlayers = orderedPlayerIds.length;
+
+            orderedPlayerIds.forEach((playerId, index) => {
+                if (!state.nutella_buffs[playerId]) state.nutella_buffs[playerId] = 0;
+
+                const position = index + 1;
+                let adjustment = 0;
+
+                if (position === 1) {
+                    adjustment = -20;
+                } else if (position === 2) {
+                    adjustment = -10;
+                } else if (position === totalPlayers) {
+                    adjustment = 20;
+                } else if (position === totalPlayers - 1) {
+                    adjustment = 10;
+                }
+
+                state.nutella_buffs[playerId] += adjustment;
+            });
+        }
+
+        function generateRound(roundIndex) {
+            const round = state.rounds[roundIndex];
+            if (!round) return;
+
+            if (!round.criterion) {
+                round.criterion = state.config.randomize_win_criteria ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
+            }
+
+            const rawValues = {};
+            state.columns.forEach(playerId => {
+                rawValues[playerId] = getRandomInt(1, 100);
+            });
+
+            const adjustedValues = {};
+            state.columns.forEach(playerId => {
+                adjustedValues[playerId] = applyNutellaBuffs(playerId, rawValues[playerId], round.criterion);
+                round.values[playerId] = adjustedValues[playerId];
+            });
+
+            const { orderedPlayerIds } = determineWinners(adjustedValues, round.criterion);
+            round.order = orderedPlayerIds;
+
+            calculateNutellaAdjustments(orderedPlayerIds, round.criterion);
+        }
+
+        function startManualRound(roundIndex) {
+            const round = state.rounds[roundIndex];
+            if (!round) return;
+
+            if (!round.criterion) {
+                round.criterion = state.config.randomize_win_criteria ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
+            }
+
+            const rawScores = {};
+            state.columns.forEach(playerId => {
+                rawScores[playerId] = getRandomInt(1, 100);
+            });
+
+            const adjustedScores = {};
+            state.columns.forEach(playerId => {
+                adjustedScores[playerId] = applyNutellaBuffs(playerId, rawScores[playerId], round.criterion);
+            });
+
+            const { orderedPlayerIds } = determineWinners(adjustedScores, round.criterion);
+
+            round.nro_sorteado = adjustedScores;
+            round.order = orderedPlayerIds;
+            round.values = {};
+            state.columns.forEach(pId => { round.values[pId] = ""; });
+
+            renderUI();
+            saveRemoteState();
+        }
+
+        // --- RENDERIZAÇÃO DA UI ---
+        function renderUI() {
+            if (!state) return;
+
+            const currentUserId = getOrSetUserId();
+            const configFormGroups = document.querySelectorAll('#configPanel .form-group');
+
+            if (tableCreated) {
+                configFormGroups[0].style.display = 'none';
+                configFormGroups[1].style.display = 'none';
+                createTableBtn.style.display = 'none';
+                randomizeOrderBtn.style.display = 'none';
+                resetBtn.style.display = 'none';
+            } else {
+                configFormGroups[0].style.display = 'flex';
+                configFormGroups[1].style.display = 'flex';
+                createTableBtn.style.display = 'inline-block';
+                randomizeOrderBtn.style.display = 'inline-block';
+                resetBtn.style.display = 'inline-block';
+            }
+
+            manualModeToggle.checked = state.config.manual_mode;
+            randomizeWinCriteriaCheckbox.checked = state.config.randomize_win_criteria;
+            nutellaModeCheckbox.checked = state.config.nutella_mode || false;
+
+            if (!tableCreated) {
+                numPlayersInput.value = state.config.players;
+                const namesAndEmails = state.columns.map(pId => {
+                    const name = state.names[pId]?.name || '';
+                    const email = state.names[pId]?.email || '';
+                    return email ? `${name} <${email}>` : name;
+                }).join('\n');
+                playerNamesTextarea.value = namesAndEmails;
+            }
+
+            if (state.config.updatedAt) lastUpdateEl.textContent = `Última atualização: ${new Date(state.config.updatedAt).toLocaleString()}`;
+            
+            tableThead.innerHTML = '';
+            tableTbody.innerHTML = '';
+
+            if (!tableCreated) {
+                updateButtonStates();
+                return;
+            }
+
+            const headerRow1 = document.createElement('tr');
+            const headerRow2 = document.createElement('tr');
+            headerRow1.innerHTML = '<th></th>';
+            headerRow2.innerHTML = '<th>SORTEIO</th>';
+
+            state.columns.forEach((pId, index) => {
+                const th1 = document.createElement('th');
+                th1.textContent = state.names[pId]?.name || `Jogador ${index + 1}`;
+                headerRow1.appendChild(th1);
+                const th2 = document.createElement('th');
+                th2.textContent = `PESSOA ${index + 1}`;
+                headerRow2.appendChild(th2);
+            });
+            headerRow1.innerHTML += '<th></th>';
+            headerRow2.innerHTML += '<th>CRITÉRIO</th>';
+            tableThead.appendChild(headerRow1);
+            tableThead.appendChild(headerRow2);
+
+            state.rounds.forEach((round) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td><strong>${round.id}</strong></td>`;
+
+                const isManualModeActive = state.config.manual_mode;
+                let nextPlayerToInput = null;
+                if (isManualModeActive && round.order && round.order.length > 0) {
+                    nextPlayerToInput = round.order.find(pId => round.values[pId] === "" || round.values[pId] === null);
+                }
+
+                state.columns.forEach(pId => {
+                    const td = document.createElement('td');
+                    const value = round.values[pId];
+                    const claimedBy = round.claimedBy ? round.claimedBy[pId] : null;
+
+                    if (isManualModeActive && round.order && round.order.length > 0) {
+                        const playOrderIndex = round.order.indexOf(pId);
+                        
+                        if (value === "" || value === null) {
+                            if (pId === nextPlayerToInput) {
+                                if (!claimedBy) {
+                                    const claimBtn = document.createElement('button');
+                                    claimBtn.textContent = '🔒';
+                                    claimBtn.title = 'Clique para fazer sua escolha';
+                                    claimBtn.onclick = () => handleClaimTurn(round.id, pId);
+                                    td.appendChild(claimBtn);
+                                } else {
+                                    // Se já foi 'claimed' (por qualquer um), mostra o input de edição
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'manual-input-wrapper';
+                                    const input = document.createElement('input');
+                                    input.type = "text";
+                                    input.className = 'manual-input';
+                                    input.dataset.roundId = round.id;
+                                    input.dataset.playerId = pId;
+                                    // Focar apenas se foi recém-criado pelo usuário atual para evitar roubo de foco em updates
+                                    // (Simplificado: remove o foco automático ou mantém, mas como todos vêem o input, foco automático pode ser irritante se vier de update remoto)
+                                    // Mantendo comportamento original de criação, mas sem verificação de user
+                                    if (claimedBy === currentUserId) {
+                                         setTimeout(() => input.focus(), 0);
+                                    }
+
+                                    wrapper.appendChild(input);
+
+                                    const confirmBtn = document.createElement('button');
+                                    confirmBtn.textContent = '✔';
+                                    confirmBtn.className = 'confirm-btn';
+                                    confirmBtn.onclick = () => handleManualInputChange(input);
+                                    wrapper.appendChild(confirmBtn);
+                                    td.appendChild(wrapper);
+                                }
+                            } else {
+                                td.textContent = '-';
+                            }
+                        } else {
+                            let valueContent = `${value}`;
+
+                            if (state.config.nutella_mode && state.nutella_buffs) {
+                                const currentBuff = state.nutella_buffs[pId] || 0;
+                                if (currentBuff !== 0) {
+                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
+                                    const buffSign = currentBuff > 0 ? '+' : '';
+                                    valueContent += ` <span class="${buffClass}">(${buffSign}${currentBuff})</span>`;
+                                }
+                            }
+
+                            td.innerHTML = valueContent;
+                        }
+
+                        const tempScore = round.nro_sorteado ? round.nro_sorteado[pId] : '-';
+                        if (playOrderIndex > -1) {
+                            const indicator = document.createElement('span');
+                            indicator.className = 'play-order-indicator';
+                            indicator.innerHTML = `(${playOrderIndex + 1}º a escolher - 🎲 ${tempScore})`;
+                            td.appendChild(indicator);
+                        }
+                    } else {
+                        let content = '';
+                        if (value !== null && value !== '') {
+                            content = `${value} `;
+
+                            if (state.config.nutella_mode && state.nutella_buffs) {
+                                const currentBuff = state.nutella_buffs[pId] || 0;
+                                if (currentBuff !== 0) {
+                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
+                                    const buffSign = currentBuff > 0 ? '+' : '';
+                                    content += `<span class="${buffClass}">(${buffSign}${currentBuff})</span> `;
+                                }
+                            }
+
+                            const place = round.order ? round.order.indexOf(pId) + 1 : null;
+                            if (place) content += `<span class="winner-${place}">[${place}º]</span>`;
+                        }
+                        td.innerHTML = content;
+                    }
+                    tr.appendChild(td);
+                });
+
+                const criteriaTd = document.createElement('td');
+                if (round.criterion) criteriaTd.innerHTML = `<span class="win-criteria">${round.criterion === 'MAX' ? 'MAIOR' : 'MENOR'} vence</span>`;
+                tr.appendChild(criteriaTd);
+                tableTbody.appendChild(tr);
+            });
+            updateButtonStates();
+        }
+
+
+
+        async function handleClaimTurn(roundId, playerId) {
+            const userId = getOrSetUserId();
+            const round = state.rounds.find(r => r.id === roundId);
+
+            // Verificação de associação removida
+
+
+            if (round && (!round.claimedBy || !round.claimedBy[playerId])) {
+                if (!round.claimedBy) round.claimedBy = {};
+                round.claimedBy[playerId] = userId;
+                
+                renderUI(); 
+                // Save removido para evitar erro 500, salva apenas ao confirmar valor
+            }
+        }
+
+        async function handleManualInputChange(inputElement) {
+            const roundId = inputElement.dataset.roundId;
+            const playerId = inputElement.dataset.playerId;
+            const value = inputElement.value;
+            const userId = getOrSetUserId();
+
+            const round = state.rounds.find(r => r.id === roundId);
+            if (round) {
+                // Verificação de claimedBy removida para permitir edição livre
+                round.values[playerId] = value;
+
+                const allChosen = round.order.every(pId => round.values[pId] !== "" && round.values[pId] !== null);
+                if (allChosen && state.config.nutella_mode) {
+                    calculateNutellaAdjustments(round.order, round.criterion);
+                }
+            }
+
+            renderUI();
+            await saveRemoteState();
+        }
+
+        function isLastRoundComplete() {
+            if (!state || !state.rounds || state.rounds.length === 0) {
+                return true; 
+            }
+            const lastRound = state.rounds[state.rounds.length - 1];
+            if (!lastRound.order || lastRound.order.length === 0) {
+                return false; 
+            }
+            return lastRound.order.every(pId => lastRound.values[pId] !== "" && lastRound.values[pId] !== null);
+        }
+
+        function updateButtonStates() {
+            if (!state) return;
+
+            generateRoundBtn.textContent = 'Gerar Nova Rodada';
+            generateAllBtn.style.display = 'none';
+
+            if (!tableCreated) {
+                generateRoundBtn.disabled = true;
+                return;
+            }
+            
+            generateRoundBtn.disabled = !isLastRoundComplete();
+        }
+
+        // --- MANIPULADORES DE EVENTOS ---
+        loadDrawBtn.addEventListener('click', loadSelectedDraw);
+        createDrawBtn.addEventListener('click', () => {
+            const password = prompt("Digite a senha para criar um novo sorteio:");
+            if (password !== 'PES123') {
+                if (password !== null) alert("Senha incorreta!");
+                return;
+            }
+            lobbyPanel.style.display = 'none';
+            newDrawPanel.style.display = 'block';
+            newDrawError.textContent = '';
+            newDrawNameInput.value = '';
+        });
+        cancelNewDrawBtn.addEventListener('click', () => {
+            newDrawPanel.style.display = 'none';
+            lobbyPanel.style.display = 'flex';
+        });
+
+        saveNewDrawBtn.addEventListener('click', async () => {
+            const newName = newDrawNameInput.value.trim();
+            if (!newName) {
+                newDrawError.textContent = "O nome do sorteio é obrigatório.";
+                return;
+            }
+            saveNewDrawBtn.disabled = true;
+            newDrawError.textContent = "Criando novo sorteio...";
+            const newId = await createNewBinViaProxy();
+            if (newId) {
+                await addNewDrawToLobby(newId, newName);
+            } else {
+                newDrawError.textContent = "Falha ao criar o novo sorteio. Tente novamente.";
+            }
+            saveNewDrawBtn.disabled = false;
+        });
+
+        createTableBtn.addEventListener('click', () => {
+            const numPlayers = parseInt(numPlayersInput.value, 10);
+            if (numPlayers < 2) { 
+                updateSyncStatus('error', "O nº de participantes deve ser no mínimo 2.");
+                return;
+            }
+            
+            const nameEmailRegex = /^(.*?)(?:<([^>]+)>)?$/;
+            let parsedNames = playerNamesTextarea.value.trim().split(/\n|,/).map(line => {
+                const match = line.trim().match(nameEmailRegex);
+                if (!match) return null;
+                return {
+                    name: match[1].trim().toUpperCase(),
+                    email: match[2] ? match[2].trim() : null
+                };
+            }).filter(Boolean);
+
+            if (parsedNames.length !== numPlayers) {
+                updateSyncStatus('error', `O nº de nomes (${parsedNames.length}) deve ser igual ao nº de participantes (${numPlayers}).`);
+                return;
+            }
+
+            tableCreated = true;
+            const shuffledNames = shuffleArray(parsedNames);
+            const newColumns = [];
+            const newNames = {};
+            shuffledNames.forEach((p, i) => {
+                const pId = `P${i + 1}`;
+                newColumns.push(pId);
+                newNames[pId] = { name: p.name, email: p.email, knownIds: [] }; 
+            });
+
+            state.config.players = numPlayers;
+            state.config.randomize_win_criteria = randomizeWinCriteriaCheckbox.checked;
+            state.config.manual_mode = manualModeToggle.checked;
+            state.config.nutella_mode = nutellaModeCheckbox.checked;
+            state.columns = newColumns;
+            state.names = newNames;
+            state.rounds = [];
+            state.nutella_buffs = {}; 
+            
+            renderUI();
+            saveRemoteState();
+        });
+
+        randomizeOrderBtn.addEventListener('click', () => {
+            let names = playerNamesTextarea.value.trim().split(/\n|,/).map(name => name.trim()).filter(name => name);
+            playerNamesTextarea.value = shuffleArray(names).join('\n');
+        });
+
+        generateRoundBtn.addEventListener('click', () => {
+            const password = prompt("Digite a senha para gerar uma nova rodada:");
+            if (password !== 'PES123') {
+                if(password !== null) alert("Senha incorreta!");
+                return;
+            }
+
+            const newRoundId = `R${state.rounds.length + 1}`;
+            const newRound = {
+                id: newRoundId,
+                criterion: null,
+                values: state.columns.reduce((acc, pId) => ({ ...acc, [pId]: "" }), {}),
+                order: [],
+                nro_sorteado: {},
+                claimedBy: {},
+                segredos: {}
+            };
+            state.rounds.push(newRound);
+            const newRoundIndex = state.rounds.length - 1;
+
+            if (state.config.manual_mode) {
+                startManualRound(newRoundIndex);
+            } else {
+                generateRound(newRoundIndex);
+                saveRemoteState().then(renderUI);
+            }
+        });
+
+        generateAllBtn.addEventListener('click', () => {
+            alert("Esta função foi desativada com a geração de rodadas dinâmicas.");
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if(confirm("Tem certeza que deseja limpar TODAS as rodadas e IDs de jogadores?")) {
+                state.rounds = [];
+                state.nutella_buffs = {};
+                for(const pId in state.names) {
+                    state.names[pId].knownIds = [];
+                }
+                saveRemoteState().then(renderUI);
+            }
+        });
+
+        manualModeToggle.addEventListener('change', () => {
+            if (state) {
+                state.config.manual_mode = manualModeToggle.checked;
+                saveRemoteState();
+            }
+            updateButtonStates();
+            if (tableCreated) {
+                renderUI();
+            }
+        });
+
+        exportJsonBtn.addEventListener('click', () => {
+            if (!state) return;
+            const jsonContent = JSON.stringify(state, null, 2);
+            const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            const drawName = (lobbyData.draws.find(d => d.id === currentDrawId) || {}).name || 'sorteio';
+            link.setAttribute("download", `${drawName.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.json`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        importJsonInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const newState = JSON.parse(e.target.result);
+                    if (!newState || !newState.config) throw new Error("Arquivo JSON inválido.");
+                    state = newState;
+                    tableCreated = true;
+                    saveRemoteState().then(renderUI);
+                } catch (error) {
+                    console.error("Erro ao importar JSON:", error);
+                    updateSyncStatus('error', "Erro ao importar o arquivo.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+
+        forceRefreshBtn.addEventListener('click', () => {
+            if (confirm("Isso limpará todos os dados locais (cache, cookies, armazenamento temporário) e recarregará a página. Deseja continuar?")) {
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    document.cookie.split(";").forEach(function(c) {
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    });
+                } catch (e) {
+                    console.error("Erro ao limpar dados locais:", e);
+                }
+                
+                const url = new URL(window.location.href);
+                url.searchParams.set('force_reload', Date.now());
+                window.location.href = url.toString();
+            }
+        });
+
+        // --- INICIALIZAÇÃO ---
+        function init() {
+            exportJsonBtn.textContent = "Exportar JSON";
+            const importBtn = document.querySelector('.btn-file');
+            if(importBtn) importBtn.textContent = "Importar JSON";
+            importJsonInput.accept = ".json,application/json";
+            loadLobby();
+        }
+        init();
+
+    });
+</script>
+
+</body>
+</html>
