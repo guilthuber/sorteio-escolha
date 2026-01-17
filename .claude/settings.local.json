@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(vercel --yes)",
+      "Bash(vercel git connect:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}

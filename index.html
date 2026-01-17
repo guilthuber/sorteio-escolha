@@ -406,7 +406,7 @@
                             <input type="checkbox" id="randomizeWinCriteria">
                             <label for="randomizeWinCriteria">Randomizar critério de vitória</label>
                         </div>
-                        <div class="checkbox-group" title="Nutella - Bad Luck Protection: 1º e 2º sofrem nerf (-20, -10), penúltimo e último ganham buff (+10, +20). Acumula durante todo o sorteio.">
+                        <div class="checkbox-group" title="Nutella - Bad Luck Protection: 1º e 2º sofrem nerf (20, 10). Com 4+ jogadores: penúltimo e último ganham buff (10, 20). Acumula durante todo o sorteio. Exibido no cabeçalho.">
                             <input type="checkbox" id="nutellaModeCheckbox">
                             <label for="nutellaModeCheckbox">Nutella (Bad Luck Protection)</label>
                         </div>
@@ -792,14 +792,22 @@
                 const position = index + 1;
                 let adjustment = 0;
 
-                if (position === 1) {
-                    adjustment = -20;
-                } else if (position === 2) {
-                    adjustment = -10;
-                } else if (position === totalPlayers) {
-                    adjustment = 20;
-                } else if (position === totalPlayers - 1) {
-                    adjustment = 10;
+                if (totalPlayers <= 3) {
+                    if (position === 1) {
+                        adjustment = -20;
+                    } else if (position === 2) {
+                        adjustment = -10;
+                    }
+                } else {
+                    if (position === 1) {
+                        adjustment = -20;
+                    } else if (position === 2) {
+                        adjustment = -10;
+                    } else if (position === totalPlayers) {
+                        adjustment = 20;
+                    } else if (position === totalPlayers - 1) {
+                        adjustment = 10;
+                    }
                 }
 
                 state.nutella_buffs[playerId] += adjustment;
@@ -915,7 +923,18 @@
                 th1.textContent = state.names[pId]?.name || `Jogador ${index + 1}`;
                 headerRow1.appendChild(th1);
                 const th2 = document.createElement('th');
-                th2.textContent = `PESSOA ${index + 1}`;
+
+                let th2Content = `PESSOA ${index + 1}`;
+
+                if (state.config.nutella_mode && state.nutella_buffs && state.nutella_buffs[pId]) {
+                    const currentBuff = state.nutella_buffs[pId];
+                    if (currentBuff !== 0) {
+                        const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
+                        th2Content += ` <span class="${buffClass}">(${Math.abs(currentBuff)})</span>`;
+                    }
+                }
+
+                th2.innerHTML = th2Content;
                 headerRow2.appendChild(th2);
             });
             headerRow1.innerHTML += '<th></th>';
@@ -978,18 +997,7 @@
                                 td.textContent = '-';
                             }
                         } else {
-                            let valueContent = `${value}`;
-
-                            if (state.config.nutella_mode && state.nutella_buffs) {
-                                const currentBuff = state.nutella_buffs[pId] || 0;
-                                if (currentBuff !== 0) {
-                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
-                                    const buffSign = currentBuff > 0 ? '+' : '';
-                                    valueContent += ` <span class="${buffClass}">(${buffSign}${currentBuff})</span>`;
-                                }
-                            }
-
-                            td.innerHTML = valueContent;
+                            td.innerHTML = `${value}`;
                         }
 
                         const tempScore = round.nro_sorteado ? round.nro_sorteado[pId] : '-';
@@ -1003,15 +1011,6 @@
                         let content = '';
                         if (value !== null && value !== '') {
                             content = `${value} `;
-
-                            if (state.config.nutella_mode && state.nutella_buffs) {
-                                const currentBuff = state.nutella_buffs[pId] || 0;
-                                if (currentBuff !== 0) {
-                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
-                                    const buffSign = currentBuff > 0 ? '+' : '';
-                                    content += `<span class="${buffClass}">(${buffSign}${currentBuff})</span> `;
-                                }
-                            }
 
                             const place = round.order ? round.order.indexOf(pId) + 1 : null;
                             if (place) content += `<span class="winner-${place}">[${place}º]</span>`;
