@@ -297,6 +297,20 @@
         .winner-2 { font-weight: bold; color: var(--winner2); }
         .winner-3 { font-weight: bold; color: var(--winner3); }
 
+        .nutella-buff {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
+        .nutella-nerf {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
         .win-criteria {
             font-size: 0.8em;
             color: #ccc;
@@ -392,6 +406,10 @@
                             <input type="checkbox" id="randomizeWinCriteria">
                             <label for="randomizeWinCriteria">Randomizar critério de vitória</label>
                         </div>
+                        <div class="checkbox-group" title="Nutella - Bad Luck Protection: 1º e 2º sofrem nerf (-20, -10), penúltimo e último ganham buff (+10, +20). Acumula durante todo o sorteio.">
+                            <input type="checkbox" id="nutellaModeCheckbox">
+                            <label for="nutellaModeCheckbox">Nutella (Bad Luck Protection)</label>
+                        </div>
                         <div class="switch-group">
                             <label class="switch">
                                 <input type="checkbox" id="manualModeToggle">
@@ -456,6 +474,7 @@
         const numPlayersInput = document.getElementById('numPlayers');
         const playerNamesTextarea = document.getElementById('playerNames');
         const randomizeWinCriteriaCheckbox = document.getElementById('randomizeWinCriteria');
+        const nutellaModeCheckbox = document.getElementById('nutellaModeCheckbox');
         const manualModeToggle = document.getElementById('manualModeToggle');
         const createTableBtn = document.getElementById('createTableBtn');
         const randomizeOrderBtn = document.getElementById('randomizeOrderBtn');
@@ -508,14 +527,21 @@
         async function loadLobby() {
             try {
                 // Adicionado timestamp para evitar cache
-                const response = await fetch(`${LOBBY_ENDPOINT}?t=${Date.now()}`);
+                const response = await fetch(`${LOBBY_ENDPOINT}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
                 if (!response.ok) throw new Error("Não foi possível carregar o lobby.");
                 const data = await response.json();
                 lobbyData = data && Array.isArray(data.draws) ? data : { draws: [] };
                 populateDrawSelector();
             } catch (error) {
                 console.error("Erro no Lobby:", error);
-                lobbyPanel.innerHTML = `<strong>Erro ao carregar o Lobby. Verifique a URL e a conexão. (${LOBBY_ENDPOINT})</strong>`;
+                lobbyPanel.innerHTML = `<strong>Erro ao carregar o Lobby. Verifique a URL e a conexão. (${LOBBY_ENDPOINT})</strong><br><small>${error.message}</small>`;
             }
         }
 
@@ -534,7 +560,12 @@
             try {
                 const response = await fetch(LOBBY_ENDPOINT, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify(lobbyData)
                 });
                 if (!response.ok) throw new Error("Falha ao salvar o lobby.");
@@ -551,7 +582,12 @@
             try {
                 const res = await fetch(NPOINT_PROXY_URL, {
                     method: 'POST',
-                    headers: { 'content-type': 'application/json' },
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) throw new Error(`Proxy returned status ${res.status}`);
@@ -598,24 +634,40 @@
             try {
                 updateSyncStatus('updating', 'Carregando dados...');
                 // Adicionado timestamp para evitar cache
-                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`);
+                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 state = (Object.keys(data).length > 0) ? data : null;
-                
+
                 // Remove old_config se existir ao carregar
                 if (state && state.old_config) {
                     delete state.old_config;
                 }
 
+                if (state && !state.nutella_buffs) {
+                    state.nutella_buffs = {};
+                }
+
+                if (state && state.config && state.config.nutella_mode === undefined) {
+                    state.config.nutella_mode = false;
+                }
+
                 tableCreated = state && state.columns && state.columns.length > 0;
                 if (!state) {
                      state = {
-                        config: { idnpoint: currentDrawId, players: 2, randomize_win_criteria: false, manual_mode: false, updatedAt: new Date().toISOString() },
+                        config: { idnpoint: currentDrawId, players: 2, randomize_win_criteria: false, manual_mode: false, nutella_mode: false, updatedAt: new Date().toISOString() },
                         columns: [],
                         names: {},
                         rounds: [],
-                        segredos: {}
+                        segredos: {},
+                        nutella_buffs: {}
                     };
                     tableCreated = false;
                 }
@@ -643,8 +695,11 @@
             try {
                 const response = await fetch(`https://api.npoint.io/${currentDrawId}`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json; charset=UTF-8'
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify(currentState)
                 });
@@ -672,7 +727,14 @@
             if (!currentDrawId || !state) return;
             try {
                 // Adicionado timestamp para evitar cache
-                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`);
+                const response = await fetch(`https://api.npoint.io/${currentDrawId}?t=${Date.now()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
                 if (!response.ok) return;
                 const remoteState = await response.json();
                 if (remoteState && remoteState.config && remoteState.config.updatedAt > state.config.updatedAt) {
@@ -702,6 +764,48 @@
             return { orderedPlayerIds };
         }
 
+        function applyNutellaBuffs(playerId, baseValue, criterion) {
+            if (!state.config.nutella_mode) return baseValue;
+            if (!state.nutella_buffs) state.nutella_buffs = {};
+
+            const buff = state.nutella_buffs[playerId] || 0;
+            let adjustedValue = baseValue;
+
+            if (criterion === 'MAX') {
+                adjustedValue = baseValue + buff;
+            } else {
+                adjustedValue = baseValue - buff;
+            }
+
+            return Math.max(1, Math.min(100, adjustedValue));
+        }
+
+        function calculateNutellaAdjustments(orderedPlayerIds, criterion) {
+            if (!state.config.nutella_mode) return;
+            if (!state.nutella_buffs) state.nutella_buffs = {};
+
+            const totalPlayers = orderedPlayerIds.length;
+
+            orderedPlayerIds.forEach((playerId, index) => {
+                if (!state.nutella_buffs[playerId]) state.nutella_buffs[playerId] = 0;
+
+                const position = index + 1;
+                let adjustment = 0;
+
+                if (position === 1) {
+                    adjustment = -20;
+                } else if (position === 2) {
+                    adjustment = -10;
+                } else if (position === totalPlayers) {
+                    adjustment = 20;
+                } else if (position === totalPlayers - 1) {
+                    adjustment = 10;
+                }
+
+                state.nutella_buffs[playerId] += adjustment;
+            });
+        }
+
         function generateRound(roundIndex) {
             const round = state.rounds[roundIndex];
             if (!round) return;
@@ -709,13 +813,22 @@
             if (!round.criterion) {
                 round.criterion = state.config.randomize_win_criteria ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
             }
-            
+
+            const rawValues = {};
             state.columns.forEach(playerId => {
-                round.values[playerId] = getRandomInt(1, 100);
+                rawValues[playerId] = getRandomInt(1, 100);
             });
 
-            const { orderedPlayerIds } = determineWinners(round.values, round.criterion);
+            const adjustedValues = {};
+            state.columns.forEach(playerId => {
+                adjustedValues[playerId] = applyNutellaBuffs(playerId, rawValues[playerId], round.criterion);
+                round.values[playerId] = adjustedValues[playerId];
+            });
+
+            const { orderedPlayerIds } = determineWinners(adjustedValues, round.criterion);
             round.order = orderedPlayerIds;
+
+            calculateNutellaAdjustments(orderedPlayerIds, round.criterion);
         }
 
         function startManualRound(roundIndex) {
@@ -726,16 +839,21 @@
                 round.criterion = state.config.randomize_win_criteria ? (getRandomInt(0, 1) === 0 ? 'MIN' : 'MAX') : 'MAX';
             }
 
-            const tempScores = {};
+            const rawScores = {};
             state.columns.forEach(playerId => {
-                tempScores[playerId] = getRandomInt(1, 100);
+                rawScores[playerId] = getRandomInt(1, 100);
             });
-            
-            const { orderedPlayerIds } = determineWinners(tempScores, round.criterion);
-            
-            round.nro_sorteado = tempScores;
-            round.order = orderedPlayerIds; 
-            round.values = {}; 
+
+            const adjustedScores = {};
+            state.columns.forEach(playerId => {
+                adjustedScores[playerId] = applyNutellaBuffs(playerId, rawScores[playerId], round.criterion);
+            });
+
+            const { orderedPlayerIds } = determineWinners(adjustedScores, round.criterion);
+
+            round.nro_sorteado = adjustedScores;
+            round.order = orderedPlayerIds;
+            round.values = {};
             state.columns.forEach(pId => { round.values[pId] = ""; });
 
             renderUI();
@@ -765,6 +883,7 @@
 
             manualModeToggle.checked = state.config.manual_mode;
             randomizeWinCriteriaCheckbox.checked = state.config.randomize_win_criteria;
+            nutellaModeCheckbox.checked = state.config.nutella_mode || false;
 
             if (!tableCreated) {
                 numPlayersInput.value = state.config.players;
@@ -859,7 +978,18 @@
                                 td.textContent = '-';
                             }
                         } else {
-                            td.innerHTML = `${value}`;
+                            let valueContent = `${value}`;
+
+                            if (state.config.nutella_mode && state.nutella_buffs) {
+                                const currentBuff = state.nutella_buffs[pId] || 0;
+                                if (currentBuff !== 0) {
+                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
+                                    const buffSign = currentBuff > 0 ? '+' : '';
+                                    valueContent += ` <span class="${buffClass}">(${buffSign}${currentBuff})</span>`;
+                                }
+                            }
+
+                            td.innerHTML = valueContent;
                         }
 
                         const tempScore = round.nro_sorteado ? round.nro_sorteado[pId] : '-';
@@ -873,6 +1003,16 @@
                         let content = '';
                         if (value !== null && value !== '') {
                             content = `${value} `;
+
+                            if (state.config.nutella_mode && state.nutella_buffs) {
+                                const currentBuff = state.nutella_buffs[pId] || 0;
+                                if (currentBuff !== 0) {
+                                    const buffClass = currentBuff > 0 ? 'nutella-buff' : 'nutella-nerf';
+                                    const buffSign = currentBuff > 0 ? '+' : '';
+                                    content += `<span class="${buffClass}">(${buffSign}${currentBuff})</span> `;
+                                }
+                            }
+
                             const place = round.order ? round.order.indexOf(pId) + 1 : null;
                             if (place) content += `<span class="winner-${place}">[${place}º]</span>`;
                         }
@@ -917,10 +1057,15 @@
             if (round) {
                 // Verificação de claimedBy removida para permitir edição livre
                 round.values[playerId] = value;
+
+                const allChosen = round.order.every(pId => round.values[pId] !== "" && round.values[pId] !== null);
+                if (allChosen && state.config.nutella_mode) {
+                    calculateNutellaAdjustments(round.order, round.criterion);
+                }
             }
-            
-            renderUI(); 
-            await saveRemoteState(); 
+
+            renderUI();
+            await saveRemoteState();
         }
 
         function isLastRoundComplete() {
@@ -1018,9 +1163,11 @@
             state.config.players = numPlayers;
             state.config.randomize_win_criteria = randomizeWinCriteriaCheckbox.checked;
             state.config.manual_mode = manualModeToggle.checked;
+            state.config.nutella_mode = nutellaModeCheckbox.checked;
             state.columns = newColumns;
             state.names = newNames;
-            state.rounds = []; 
+            state.rounds = [];
+            state.nutella_buffs = {}; 
             
             renderUI();
             saveRemoteState();
@@ -1066,6 +1213,7 @@
         resetBtn.addEventListener('click', () => {
             if(confirm("Tem certeza que deseja limpar TODAS as rodadas e IDs de jogadores?")) {
                 state.rounds = [];
+                state.nutella_buffs = {};
                 for(const pId in state.names) {
                     state.names[pId].knownIds = [];
                 }
